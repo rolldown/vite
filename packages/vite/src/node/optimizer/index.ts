@@ -88,6 +88,7 @@ export interface DepOptimizationConfig {
    */
   needsInterop?: string[]
   /**
+   * @deprecated
    * Options to pass to esbuild during the dep scanning and optimization
    *
    * Certain options are omitted since changing them would not be compatible
@@ -590,6 +591,14 @@ export function runOptimizeDeps(
   }
 
   const start = performance.now()
+
+  if (resolvedConfig.optimizeDeps.esbuildOptions) {
+    config.logger.error(
+      `You've set "optimizeDeps.esbuildOptions" in your config. ` +
+        `This is deprecated and vite already use rollup to optimize packages. ` +
+        `Please use "optimizeDeps.rollupOptions" instead.`,
+    )
+  }
 
   const preparedRun = prepareRollupOptimizerRun(
     resolvedConfig,
