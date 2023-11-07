@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { ImportKind, Plugin } from 'esbuild'
+import type * as Rollup from 'rollup'
 import { KNOWN_ASSET_TYPES } from '../constants'
 import type { PackageCache } from '../packages'
 import { getDepOptimizationConfig } from '../config'
@@ -329,6 +330,52 @@ export function esbuildCjsExternalPlugin(
             )};` + `module.exports = m;`,
         }),
       )
+    },
+  }
+}
+
+// esbuild doesn't transpile `require('foo')` into `import` statements if 'foo' is externalized
+// https://github.com/evanw/esbuild/issues/566#issuecomment-735551834
+export function rollupCjsExternalPlugin(
+  externals: string[],
+  platform: 'node' | 'browser',
+): Rollup.Plugin {
+  const filter = new RegExp(externals.map(matchesEntireLine).join('|'))
+
+  return {
+    name: 'cjs-external',
+    resolveId(id, importer, options) {
+      if (id.startsWith(nonFacadePrefix)) {
+        return {
+          id: id.slice(nonFacadePrefix.length),
+          external: true,
+        }
+      }
+
+      if (filter.test(id)) {
+        // TODO rolldown: kind is not available in rollup
+        const kind: ImportKind = options.custom?.kind
+        if (kind === 'require-call' && platform !== 'node') {
+          return {
+            id: cjsExternalFacadeNamespace + id,
+          }
+        }
+
+        return {
+          id,
+          external: true,
+        }
+      }
+    },
+    load(id) {
+      if (id.startsWith(cjsExternalFacadeNamespace)) {
+        return {
+          code:
+            `import * as m from ${JSON.stringify(
+              nonFacadePrefix + id.slice(cjsExternalFacadeNamespace.length),
+            )};` + `module.exports = m;`,
+        }
+      }
     },
   }
 }
