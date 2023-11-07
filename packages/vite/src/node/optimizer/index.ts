@@ -3,7 +3,7 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { performance } from 'node:perf_hooks'
-import type { RollupOutput } from 'rollup';
+import type { RollupOutput } from 'rollup'
 import rollup from 'rollup'
 import colors from 'picocolors'
 import type { BuildContext, BuildOptions as EsbuildBuildOptions } from 'esbuild'
@@ -597,7 +597,7 @@ export function runOptimizeDeps(
 
   const start = performance.now()
 
-  const preparedRun = prepareEsbuildOptimizerRun(
+  const preparedRun = prepareRollupOptimizerRun(
     resolvedConfig,
     depsInfo,
     ssr,
@@ -605,76 +605,63 @@ export function runOptimizeDeps(
     optimizerContext,
   )
 
-  const runResult = preparedRun.then(({ context, idToExports }) => {
-    function disposeContext() {
-      return context?.dispose().catch((e) => {
-        config.logger.error('Failed to dispose esbuild context', { error: e })
-      })
-    }
-    if (!context || optimizerContext.cancelled) {
-      disposeContext()
+  const runResult = preparedRun.then(({ build, idToExports }) => {
+    if (!build || optimizerContext.cancelled) {
       return cancelledResult
     }
 
-    return context
-      .rebuild()
+    return build()
       .then((result) => {
-        const meta = result.metafile!
-
-        // the paths in `meta.outputs` are relative to `process.cwd()`
+        // TODO: Make sure the paths in `meta.outputs` are relative to `process.cwd()`
         const processingCacheDirOutputPath = path.relative(
           process.cwd(),
           processingCacheDir,
         )
 
-        for (const id in depsInfo) {
-          const output = esbuildOutputFromId(
-            meta.outputs,
-            id,
-            processingCacheDir,
-          )
+        for (const chunk of result.output) {
+          if (chunk.type === 'chunk' && chunk.isEntry) {
+            if (chunk.isEntry) {
+              const id = chunk.facadeModuleId!
 
-          const { exportsData, ...info } = depsInfo[id]
-          addOptimizedDepInfo(metadata, 'optimized', {
-            ...info,
-            // We only need to hash the output.imports in to check for stability, but adding the hash
-            // and file path gives us a unique hash that may be useful for other things in the future
-            fileHash: getHash(
-              metadata.hash +
-                depsInfo[id].file +
-                JSON.stringify(output.imports),
-            ),
-            browserHash: metadata.browserHash,
-            // After bundling we have more information and can warn the user about legacy packages
-            // that require manual configuration
-            needsInterop: needsInterop(
-              config,
-              ssr,
-              id,
-              idToExports[id],
-              output,
-            ),
-          })
-        }
-
-        for (const o of Object.keys(meta.outputs)) {
-          if (!o.match(jsMapExtensionRE)) {
-            const id = path
-              .relative(processingCacheDirOutputPath, o)
-              .replace(jsExtensionRE, '')
-            const file = getOptimizedDepPath(id, resolvedConfig, ssr)
-            if (
-              !findOptimizedDepInfoInRecord(
-                metadata.optimized,
-                (depInfo) => depInfo.file === file,
-              )
-            ) {
-              addOptimizedDepInfo(metadata, 'chunks', {
-                id,
-                file,
-                needsInterop: false,
+              const { exportsData, ...info } = depsInfo[id]
+              addOptimizedDepInfo(metadata, 'optimized', {
+                ...info,
+                // We only need to hash the output.imports in to check for stability, but adding the hash
+                // and file path gives us a unique hash that may be useful for other things in the future
+                fileHash: getHash(
+                  metadata.hash +
+                    depsInfo[id].file +
+                    JSON.stringify(chunk.imports),
+                ),
                 browserHash: metadata.browserHash,
+                // After bundling we have more information and can warn the user about legacy packages
+                // that require manual configuration
+                needsInterop: needsInterop(
+                  config,
+                  ssr,
+                  id,
+                  idToExports[id],
+                  chunk,
+                ),
               })
+            } else {
+              const id = path
+                .relative(processingCacheDirOutputPath, chunk.fileName)
+                .replace(jsExtensionRE, '')
+              const file = getOptimizedDepPath(id, resolvedConfig, ssr)
+              if (
+                !findOptimizedDepInfoInRecord(
+                  metadata.optimized,
+                  (depInfo) => depInfo.file === file,
+                )
+              ) {
+                addOptimizedDepInfo(metadata, 'chunks', {
+                  id,
+                  file,
+                  needsInterop: false,
+                  browserHash: metadata.browserHash,
+                })
+              }
             }
           }
         }
@@ -694,9 +681,6 @@ export function runOptimizeDeps(
         }
         throw e
       })
-      .finally(() => {
-        return disposeContext()
-      })
   })
 
   runResult.catch(() => {
@@ -706,8 +690,6 @@ export function runOptimizeDeps(
   return {
     async cancel() {
       optimizerContext.cancelled = true
-      const { context } = await preparedRun
-      await context?.cancel()
       cleanUp()
     },
     result: runResult,
