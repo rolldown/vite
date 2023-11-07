@@ -3,6 +3,8 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { performance } from 'node:perf_hooks'
+import type { RollupOutput } from 'rollup';
+import rollup from 'rollup'
 import colors from 'picocolors'
 import type { BuildContext, BuildOptions as EsbuildBuildOptions } from 'esbuild'
 import esbuild, { build } from 'esbuild'
@@ -13,6 +15,7 @@ import { getDepOptimizationConfig } from '../config'
 import type { ResolvedConfig } from '../config'
 import {
   arraify,
+  asyncFlatten,
   createDebugger,
   flattenId,
   getHash,
@@ -26,7 +29,13 @@ import {
 } from '../utils'
 import { transformWithEsbuild } from '../plugins/esbuild'
 import { ESBUILD_MODULES_TARGET } from '../constants'
-import { esbuildCjsExternalPlugin, esbuildDepPlugin } from './esbuildDepPlugin'
+import { Rollup } from '..'
+import {
+  esbuildCjsExternalPlugin,
+  esbuildDepPlugin,
+  rollupCjsExternalPlugin,
+  rollupDepPlugin,
+} from './esbuildDepPlugin'
 import { scanImports } from './scan'
 import { createOptimizeDepsIncludeResolver, expandGlobIds } from './resolve'
 export {
@@ -108,6 +117,8 @@ export interface DepOptimizationConfig {
     | 'outExtension'
     | 'metafile'
   >
+
+  rollupOptions: rollup.RollupOptions
   /**
    * List of file extensions that can be optimized. A corresponding esbuild
    * plugin must exist to handle the specific extension.
@@ -829,6 +840,128 @@ async function prepareEsbuildOptimizerRun(
     },
   })
   return { context, idToExports }
+}
+
+async function prepareRollupOptimizerRun(
+  resolvedConfig: ResolvedConfig,
+  depsInfo: Record<string, OptimizedDepInfo>,
+  ssr: boolean,
+  processingCacheDir: string,
+  optimizerContext: { cancelled: boolean },
+): Promise<{
+  build?: () => Promise<RollupOutput>
+  idToExports: Record<string, ExportsData>
+}> {
+  const isBuild = resolvedConfig.command === 'build'
+  const config: ResolvedConfig = {
+    ...resolvedConfig,
+    command: 'build',
+  }
+
+  // esbuild generates nested directory output with lowest common ancestor base
+  // this is unpredictable and makes it difficult to analyze entry / output
+  // mapping. So what we do here is:
+  // 1. flatten all ids to eliminate slash
+  // 2. in the plugin, read the entry ourselves as virtual files to retain the
+  //    path.
+  const flatIdDeps: Record<string, string> = {}
+  const idToExports: Record<string, ExportsData> = {}
+
+  const optimizeDeps = getDepOptimizationConfig(config, ssr)
+
+  const { plugins: pluginsFromConfig = [], ...rollupOptions } =
+    optimizeDeps?.rollupOptions ?? {}
+
+  await Promise.all(
+    Object.keys(depsInfo).map(async (id) => {
+      const src = depsInfo[id].src!
+      const exportsData = await (depsInfo[id].exportsData ??
+        extractExportsData(src, config, ssr))
+      // TODO support jsxLoader
+      // if (exportsData.jsxLoader && !esbuildOptions.loader?.['.js']) {
+      //   // Ensure that optimization won't fail by defaulting '.js' to the JSX parser.
+      //   // This is useful for packages such as Gatsby.
+      //   esbuildOptions.loader = {
+      //     '.js': 'jsx',
+      //     ...esbuildOptions.loader,
+      //   }
+      // }
+      const flatId = flattenId(id)
+      flatIdDeps[flatId] = src
+      idToExports[id] = exportsData
+    }),
+  )
+
+  if (optimizerContext.cancelled) return { build: undefined, idToExports }
+
+  // esbuild automatically replaces process.env.NODE_ENV for platform 'browser'
+  // But in lib mode, we need to keep process.env.NODE_ENV untouched
+  const define = {
+    'process.env.NODE_ENV':
+      isBuild && config.build.lib
+        ? 'process.env.NODE_ENV'
+        : JSON.stringify(process.env.NODE_ENV || config.mode),
+  }
+
+  const platform =
+    ssr && config.ssr?.target !== 'webworker' ? 'node' : 'browser'
+
+  const external = [...(optimizeDeps?.exclude ?? [])]
+
+  if (isBuild) {
+    let rollupOptionsExternal = config?.build?.rollupOptions?.external
+    if (rollupOptionsExternal) {
+      if (typeof rollupOptionsExternal === 'string') {
+        rollupOptionsExternal = [rollupOptionsExternal]
+      }
+      // TODO: decide whether to support RegExp and function options
+      // They're not supported yet because `optimizeDeps.exclude` currently only accepts strings
+      if (
+        !Array.isArray(rollupOptionsExternal) ||
+        rollupOptionsExternal.some((ext) => typeof ext !== 'string')
+      ) {
+        throw new Error(
+          `[vite] 'build.rollupOptions.external' can only be an array of strings or a string when using esbuild optimization at build time.`,
+        )
+      }
+      external.push(...(rollupOptionsExternal as string[]))
+    }
+  }
+
+  const plugins = await asyncFlatten(
+    Array.isArray(pluginsFromConfig) ? pluginsFromConfig : [pluginsFromConfig],
+  )
+  if (external.length) {
+    plugins.push(rollupCjsExternalPlugin(external, platform))
+  }
+  plugins.push(rollupDepPlugin(flatIdDeps, external, config, ssr))
+
+  async function build() {
+    // TODO platform target define
+    const bundle = await rollup.rollup({
+      input: Object.keys(flatIdDeps),
+      external,
+      logLevel: 'warn',
+      plugins,
+      ...rollupOptions,
+    })
+    return await bundle.write({
+      format: 'esm',
+      sourcemap: true,
+      dir: processingCacheDir,
+      // See https://github.com/evanw/esbuild/issues/1921#issuecomment-1152991694
+      banner:
+        platform === 'node'
+          ? (chunk) =>
+              chunk.fileName.endsWith('.js')
+                ? `import { createRequire } from 'module';const require = createRequire(import.meta.url);`
+                : ''
+          : undefined,
+      ...rollupOptions.output,
+    })
+  }
+
+  return { build, idToExports }
 }
 
 export async function addManuallyIncludedOptimizeDeps(
