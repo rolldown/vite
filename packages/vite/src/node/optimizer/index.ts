@@ -4,6 +4,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import { performance } from 'node:perf_hooks'
 import type { RollupOutput } from 'rollup'
+import rollupPluginReplace from '@rollup/plugin-replace'
 import rollup from 'rollup'
 import colors from 'picocolors'
 import type { BuildOptions as EsbuildBuildOptions } from 'esbuild'
@@ -30,6 +31,7 @@ import {
 import { transformWithEsbuild } from '../plugins/esbuild'
 import { ESBUILD_MODULES_TARGET } from '../constants'
 import { Rollup } from '..'
+import { definePlugin } from '../plugins/define'
 import { rollupCjsExternalPlugin, rollupDepPlugin } from './esbuildDepPlugin'
 import { scanImports } from './scan'
 import { createOptimizeDepsIncludeResolver, expandGlobIds } from './resolve'
@@ -751,8 +753,7 @@ async function prepareRollupOptimizerRun(
 
   if (optimizerContext.cancelled) return { build: undefined, idToExports }
 
-  // esbuild automatically replaces process.env.NODE_ENV for platform 'browser'
-  // But in lib mode, we need to keep process.env.NODE_ENV untouched
+  // In lib mode, we need to keep process.env.NODE_ENV untouched
   const define = {
     'process.env.NODE_ENV':
       isBuild && config.build.lib
@@ -792,6 +793,7 @@ async function prepareRollupOptimizerRun(
     plugins.push(rollupCjsExternalPlugin(external, platform))
   }
   plugins.push(rollupDepPlugin(flatIdDeps, external, config, ssr))
+  plugins.push(rollupPluginReplace(define))
 
   async function build() {
     // TODO platform target define
