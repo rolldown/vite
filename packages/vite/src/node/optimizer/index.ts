@@ -731,20 +731,17 @@ async function prepareRollupOptimizerRun(
   const { plugins: pluginsFromConfig = [], ...rollupOptions } =
     optimizeDeps?.rollupOptions ?? {}
 
+  let jsxLoader = false
   await Promise.all(
     Object.keys(depsInfo).map(async (id) => {
       const src = depsInfo[id].src!
       const exportsData = await (depsInfo[id].exportsData ??
         extractExportsData(src, config, ssr))
-      // TODO support jsxLoader
-      // if (exportsData.jsxLoader && !esbuildOptions.loader?.['.js']) {
-      //   // Ensure that optimization won't fail by defaulting '.js' to the JSX parser.
-      //   // This is useful for packages such as Gatsby.
-      //   esbuildOptions.loader = {
-      //     '.js': 'jsx',
-      //     ...esbuildOptions.loader,
-      //   }
-      // }
+      if (exportsData.jsxLoader) {
+        // Ensure that optimization won't fail by defaulting '.js' to the JSX parser.
+        // This is useful for packages such as Gatsby.
+        jsxLoader = true
+      }
       const flatId = flattenId(id)
       flatIdDeps[flatId] = src
       idToExports[id] = exportsData
@@ -794,9 +791,31 @@ async function prepareRollupOptimizerRun(
   }
   plugins.push(rollupDepPlugin(flatIdDeps, external, config, ssr))
   plugins.push(rollupPluginReplace(define))
+  plugins.push({
+    name: 'optimizer-transform',
+    async transform(code, id) {
+      if (/\.(?:m?[jt]s|[jt]sx)$/.test(id)) {
+        const result = await transformWithEsbuild(code, id, {
+          sourcemap: true,
+          sourcefile: id,
+          loader: jsxLoader && /\.js$/.test(id) ? 'jsx' : undefined,
+          target: isBuild
+            ? config.build.target || undefined
+            : ESBUILD_MODULES_TARGET,
+        })
+        result.warnings.forEach((m) => {
+          this.warn(prettifyMessage(m, code))
+        })
+        return {
+          code: result.code,
+          map: result.map,
+        }
+      }
+    },
+  })
 
   async function build() {
-    // TODO platform target define
+    // TODO platform
     const bundle = await rollup.rollup({
       input: Object.keys(flatIdDeps),
       external,
