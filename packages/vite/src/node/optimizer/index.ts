@@ -4,7 +4,6 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import { performance } from 'node:perf_hooks'
 import type { RollupOptions, RollupOutput } from '@rolldown/node'
-import rollupPluginReplace from '@rollup/plugin-replace'
 import * as rolldown from '@rolldown/node'
 import colors from 'picocolors'
 import type { BuildOptions as EsbuildBuildOptions } from 'esbuild'
@@ -592,14 +591,6 @@ export function runOptimizeDeps(
 
   const start = performance.now()
 
-  if (resolvedConfig.optimizeDeps.esbuildOptions) {
-    config.logger.error(
-      `You've set "optimizeDeps.esbuildOptions" in your config. ` +
-        `This is deprecated and vite already use rollup to optimize packages. ` +
-        `Please use "optimizeDeps.rollupOptions" instead.`,
-    )
-  }
-
   const preparedRun = prepareRollupOptimizerRun(
     resolvedConfig,
     depsInfo,
@@ -677,11 +668,6 @@ export function runOptimizeDeps(
       })
 
       .catch((e) => {
-        if (e.errors && e.message.includes('The build was canceled')) {
-          // esbuild logs an error when cancelling, but this is expected so
-          // return an empty result instead
-          return cancelledResult
-        }
         throw e
       })
   })
