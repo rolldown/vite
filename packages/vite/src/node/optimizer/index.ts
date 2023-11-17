@@ -3,9 +3,9 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { performance } from 'node:perf_hooks'
-import type { RollupOutput } from 'rollup'
+import type { RollupOptions, RollupOutput } from '@rolldown/node'
 import rollupPluginReplace from '@rollup/plugin-replace'
-import rollup from 'rollup'
+import * as rolldown from '@rolldown/node'
 import colors from 'picocolors'
 import type { BuildOptions as EsbuildBuildOptions } from 'esbuild'
 import { build } from 'esbuild'
@@ -28,10 +28,8 @@ import {
   removeLeadingSlash,
   tryStatSync,
 } from '../utils'
-import { transformWithEsbuild } from '../plugins/esbuild'
+import { prettifyMessage, transformWithEsbuild } from '../plugins/esbuild'
 import { ESBUILD_MODULES_TARGET } from '../constants'
-import { Rollup } from '..'
-import { definePlugin } from '../plugins/define'
 import { rollupCjsExternalPlugin, rollupDepPlugin } from './esbuildDepPlugin'
 import { scanImports } from './scan'
 import { createOptimizeDepsIncludeResolver, expandGlobIds } from './resolve'
@@ -115,7 +113,7 @@ export interface DepOptimizationConfig {
     | 'metafile'
   >
 
-  rollupOptions: rollup.RollupOptions
+  rollupOptions?: RollupOptions
   /**
    * List of file extensions that can be optimized. A corresponding esbuild
    * plugin must exist to handle the specific extension.
@@ -626,17 +624,17 @@ export function runOptimizeDeps(
         for (const chunk of result.output) {
           if (chunk.type === 'chunk' && chunk.isEntry) {
             if (chunk.isEntry) {
-              const id = chunk.facadeModuleId!
-
-              const { exportsData, ...info } = depsInfo[id]
+              const { exportsData, file, id, ...info } = Object.values(
+                depsInfo,
+              ).find((d) => d.src?.endsWith(chunk.facadeModuleId!))!
               addOptimizedDepInfo(metadata, 'optimized', {
+                id,
+                file,
                 ...info,
                 // We only need to hash the output.imports in to check for stability, but adding the hash
                 // and file path gives us a unique hash that may be useful for other things in the future
                 fileHash: getHash(
-                  metadata.hash +
-                    depsInfo[id].file +
-                    JSON.stringify(chunk.imports),
+                  metadata.hash + file + JSON.stringify(chunk.modules),
                 ),
                 browserHash: metadata.browserHash,
                 // After bundling we have more information and can warn the user about legacy packages
@@ -790,7 +788,6 @@ async function prepareRollupOptimizerRun(
     plugins.push(rollupCjsExternalPlugin(external, platform))
   }
   plugins.push(rollupDepPlugin(flatIdDeps, external, config, ssr))
-  plugins.push(rollupPluginReplace(define))
   plugins.push({
     name: 'optimizer-transform',
     async transform(code, id) {
@@ -799,6 +796,7 @@ async function prepareRollupOptimizerRun(
           sourcemap: true,
           sourcefile: id,
           loader: jsxLoader && /\.js$/.test(id) ? 'jsx' : undefined,
+          define,
           target: isBuild
             ? config.build.target || undefined
             : ESBUILD_MODULES_TARGET,
@@ -816,25 +814,25 @@ async function prepareRollupOptimizerRun(
 
   async function build() {
     // TODO platform
-    const bundle = await rollup.rollup({
+    const bundle = await rolldown.rolldown({
       input: Object.keys(flatIdDeps),
       external,
-      logLevel: 'warn',
+      // logLevel: 'warn',
       plugins,
       ...rollupOptions,
     })
     return await bundle.write({
       format: 'esm',
-      sourcemap: true,
+      // sourcemap: true,
       dir: processingCacheDir,
       // See https://github.com/evanw/esbuild/issues/1921#issuecomment-1152991694
-      banner:
-        platform === 'node'
-          ? (chunk) =>
-              chunk.fileName.endsWith('.js')
-                ? `import { createRequire } from 'module';const require = createRequire(import.meta.url);`
-                : ''
-          : undefined,
+      // banner:
+      //   platform === 'node'
+      //     ? (chunk) =>
+      //         chunk.fileName.endsWith('.js')
+      //           ? `import { createRequire } from 'module';const require = createRequire(import.meta.url);`
+      //           : ''
+      //     : undefined,
       ...rollupOptions.output,
     })
   }
