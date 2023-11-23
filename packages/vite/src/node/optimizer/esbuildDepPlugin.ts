@@ -50,7 +50,7 @@ const externalTypes = [
   ...KNOWN_ASSET_TYPES,
 ]
 
-export function rollupDepPlugin(
+export function rolldownDepPlugin(
   qualified: Record<string, string>,
   external: string[],
   config: ResolvedConfig,
@@ -278,7 +278,7 @@ const matchesEntireLine = (text: string) => `^${escapeRegex(text)}$`
 
 // esbuild doesn't transpile `require('foo')` into `import` statements if 'foo' is externalized
 // https://github.com/evanw/esbuild/issues/566#issuecomment-735551834
-export function rollupCjsExternalPlugin(
+export function rolldownCjsExternalPlugin(
   externals: string[],
   platform: 'node' | 'browser',
 ): Plugin {

@@ -62,10 +62,8 @@ export function resolveSSROptions(
     optimizeDeps: {
       disabled: true,
       ...optimizeDeps,
-      esbuildOptions: {
-        preserveSymlinks,
-        ...optimizeDeps.esbuildOptions,
-      },
+      // TODO preserveSymlinks
+      rollupOptions: optimizeDeps.rollupOptions,
     },
   }
 }

@@ -6,7 +6,7 @@ import { performance } from 'node:perf_hooks'
 import type { RollupOptions, RollupOutput } from '@rolldown/node'
 import * as rolldown from '@rolldown/node'
 import colors from 'picocolors'
-import type { BuildOptions as EsbuildBuildOptions } from 'esbuild'
+import type { BuildOptions as EsbuildBuildOptions, Loader } from 'esbuild'
 import { build } from 'esbuild'
 import { init, parse } from 'es-module-lexer'
 import glob from 'fast-glob'
@@ -29,7 +29,10 @@ import {
 } from '../utils'
 import { prettifyMessage, transformWithEsbuild } from '../plugins/esbuild'
 import { ESBUILD_MODULES_TARGET } from '../constants'
-import { rollupCjsExternalPlugin, rollupDepPlugin } from './esbuildDepPlugin'
+import {
+  rolldownCjsExternalPlugin,
+  rolldownDepPlugin,
+} from './esbuildDepPlugin'
 import { scanImports } from './scan'
 import { createOptimizeDepsIncludeResolver, expandGlobIds } from './resolve'
 export {
@@ -617,7 +620,10 @@ export function runOptimizeDeps(
             if (chunk.isEntry) {
               const { exportsData, file, id, ...info } = Object.values(
                 depsInfo,
-              ).find((d) => d.src?.endsWith(chunk.facadeModuleId!))!
+              ).find(
+                (d) =>
+                  d.src === path.join(process.cwd(), chunk.facadeModuleId!),
+              )!
               addOptimizedDepInfo(metadata, 'optimized', {
                 id,
                 file,
@@ -771,9 +777,9 @@ async function prepareRollupOptimizerRun(
     Array.isArray(pluginsFromConfig) ? pluginsFromConfig : [pluginsFromConfig],
   )
   if (external.length) {
-    plugins.push(rollupCjsExternalPlugin(external, platform))
+    plugins.push(rolldownCjsExternalPlugin(external, platform))
   }
-  plugins.push(rollupDepPlugin(flatIdDeps, external, config, ssr))
+  plugins.push(rolldownDepPlugin(flatIdDeps, external, config, ssr))
   plugins.push({
     name: 'optimizer-transform',
     async transform(code, id) {
@@ -1103,18 +1109,19 @@ export async function extractExportsData(
 
   const optimizeDeps = getDepOptimizationConfig(config, ssr)
 
-  const esbuildOptions = optimizeDeps?.esbuildOptions ?? {}
+  const rollupOptions = optimizeDeps?.rollupOptions ?? {}
   if (optimizeDeps.extensions?.some((ext) => filePath.endsWith(ext))) {
     // For custom supported extensions, build the entry file to transform it into JS,
     // and then parse with es-module-lexer. Note that the `bundle` option is not `true`,
     // so only the entry file is being transformed.
-    const result = await build({
-      ...esbuildOptions,
-      entryPoints: [filePath],
-      write: false,
+    const build = await rolldown.rolldown({
+      ...rollupOptions,
+      input: [filePath],
+    })
+    const result = await build.generate({
       format: 'esm',
     })
-    const [imports, exports] = parse(result.outputFiles[0].text)
+    const [imports, exports] = parse(result.output[0].code)
     return {
       hasImports: imports.length > 0,
       exports: exports.map((e) => e.n),
@@ -1128,7 +1135,7 @@ export async function extractExportsData(
   try {
     parseResult = parse(entryContent)
   } catch {
-    const loader = esbuildOptions.loader?.[path.extname(filePath)] || 'jsx'
+    const loader = (path.extname(filePath).slice(1) as Loader) || 'jsx'
     debug?.(
       `Unable to parse: ${filePath}.\n Trying again with a ${loader} transform.`,
     )
@@ -1226,9 +1233,9 @@ export function getDepHash(config: ResolvedConfig, ssr: boolean): string {
       optimizeDeps: {
         include: optimizeDeps?.include,
         exclude: optimizeDeps?.exclude,
-        esbuildOptions: {
-          ...optimizeDeps?.esbuildOptions,
-          plugins: optimizeDeps?.esbuildOptions?.plugins?.map((p) => p.name),
+        rollupOptions: {
+          ...optimizeDeps?.rollupOptions,
+          plugins: optimizeDeps?.rollupOptions?.plugins?.map((p) => p.name),
         },
       },
     },

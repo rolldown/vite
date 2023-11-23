@@ -204,7 +204,7 @@ async function prepareRolldownScanner(
   plugins.push(rolldownScanPlugin(config, container, deps, missing, entries))
 
   async function build() {
-    await rolldown.rolldown({
+    await rolldown.experimental_scan({
       input: entries,
       // logLevel: 'silent',
       plugins,
@@ -561,9 +561,7 @@ function rolldownScanPlugin(
           contents = config.esbuild.jsxInject + `\n` + contents
         }
 
-        const loader =
-          config.optimizeDeps?.esbuildOptions?.loader?.[`.${ext}`] ||
-          (ext as Loader)
+        const loader = ext as Loader
 
         if (loader !== 'js') {
           contents = (await transform(contents, { loader })).code

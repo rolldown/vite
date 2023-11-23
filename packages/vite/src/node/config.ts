@@ -776,10 +776,8 @@ export async function resolveConfig(
     optimizeDeps: {
       disabled: 'build',
       ...optimizeDeps,
-      esbuildOptions: {
-        preserveSymlinks: resolveOptions.preserveSymlinks,
-        ...optimizeDeps.esbuildOptions,
-      },
+      rollupOptions: optimizeDeps.rollupOptions,
+      // TODO preserveSymlinks: resolveOptions.preserveSymlinks,
     },
     worker: resolvedWorkerOptions,
     appType: config.appType ?? 'spa',
