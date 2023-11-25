@@ -196,6 +196,10 @@ export interface OptimizedDepInfo {
    * data used both to define if interop is needed and when pre-bundling
    */
   exportsData?: Promise<ExportsData>
+  /**
+   * Mark the chunk from dynamic import
+   */
+  isDynamicEntry?: boolean
 }
 
 export interface DepOptimizationMetadata {
@@ -616,7 +620,7 @@ export function runOptimizeDeps(
         )
 
         for (const chunk of result.output) {
-          if (chunk.type === 'chunk' && chunk.isEntry) {
+          if (chunk.type === 'chunk') {
             if (chunk.isEntry) {
               const { exportsData, file, id, ...info } = Object.values(
                 depsInfo,
@@ -645,9 +649,7 @@ export function runOptimizeDeps(
                 ),
               })
             } else {
-              const id = path
-                .relative(processingCacheDirOutputPath, chunk.fileName)
-                .replace(jsExtensionRE, '')
+              const id = chunk.fileName.replace(jsExtensionRE, '')
               const file = getOptimizedDepPath(id, resolvedConfig, ssr)
               if (
                 !findOptimizedDepInfoInRecord(
@@ -660,6 +662,7 @@ export function runOptimizeDeps(
                   file,
                   needsInterop: false,
                   browserHash: metadata.browserHash,
+                  isDynamicEntry: chunk.isDynamicEntry,
                 })
               }
             }
@@ -1062,7 +1065,10 @@ function stringifyDepsOptimizerMetadata(
         ),
       ),
       chunks: Object.fromEntries(
-        Object.values(chunks).map(({ id, file }) => [id, { file }]),
+        Object.values(chunks).map(({ id, file, isDynamicEntry }) => [
+          id,
+          { file, isDynamicEntry },
+        ]),
       ),
     },
     (key: string, value: string) => {
