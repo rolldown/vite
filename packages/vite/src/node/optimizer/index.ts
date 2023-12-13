@@ -613,41 +613,36 @@ export function runOptimizeDeps(
 
     return build()
       .then((result) => {
-        // TODO: Make sure the paths in `meta.outputs` are relative to `process.cwd()`
-        const processingCacheDirOutputPath = path.relative(
-          process.cwd(),
-          processingCacheDir,
-        )
-
         for (const chunk of result.output) {
           if (chunk.type === 'chunk') {
             if (chunk.isEntry) {
-              const { exportsData, file, id, ...info } = Object.values(
-                depsInfo,
-              ).find(
+              // One chunk maybe corresponding multiply entry
+              const deps = Object.values(depsInfo).filter(
                 (d) =>
                   d.src === path.join(process.cwd(), chunk.facadeModuleId!),
-              )!
-              addOptimizedDepInfo(metadata, 'optimized', {
-                id,
-                file,
-                ...info,
-                // We only need to hash the output.imports in to check for stability, but adding the hash
-                // and file path gives us a unique hash that may be useful for other things in the future
-                fileHash: getHash(
-                  metadata.hash + file + JSON.stringify(chunk.modules),
-                ),
-                browserHash: metadata.browserHash,
-                // After bundling we have more information and can warn the user about legacy packages
-                // that require manual configuration
-                needsInterop: needsInterop(
-                  config,
-                  ssr,
+              )
+              for (const { exportsData, file, id, ...info } of deps) {
+                addOptimizedDepInfo(metadata, 'optimized', {
                   id,
-                  idToExports[id],
-                  chunk,
-                ),
-              })
+                  file,
+                  ...info,
+                  // We only need to hash the output.imports in to check for stability, but adding the hash
+                  // and file path gives us a unique hash that may be useful for other things in the future
+                  fileHash: getHash(
+                    metadata.hash + file + JSON.stringify(chunk.modules),
+                  ),
+                  browserHash: metadata.browserHash,
+                  // After bundling we have more information and can warn the user about legacy packages
+                  // that require manual configuration
+                  needsInterop: needsInterop(
+                    config,
+                    ssr,
+                    id,
+                    idToExports[id],
+                    chunk,
+                  ),
+                })
+              }
             } else {
               const id = chunk.fileName.replace(jsExtensionRE, '')
               const file = getOptimizedDepPath(id, resolvedConfig, ssr)
@@ -808,12 +803,16 @@ async function prepareRollupOptimizerRun(
   })
 
   async function build() {
-    // TODO platform
     const bundle = await rolldown.rolldown({
       input: Object.keys(flatIdDeps),
       external,
       // logLevel: 'warn',
       plugins,
+      resolve: {
+        mainFields: ['module', 'main'],
+        aliasFields: [['browser']],
+        // extensions: ['.js', '.css']
+      },
       ...rollupOptions,
     })
     return await bundle.write({

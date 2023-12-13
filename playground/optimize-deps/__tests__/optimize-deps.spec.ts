@@ -251,8 +251,9 @@ test('name file limit is 170 characters', async () => {
     const onlyTheFilePart = stripFolderPart.split('.')[0]
     expect(onlyTheFilePart).toHaveLength(170)
 
-    const text = await content.text()
-    expect(text).toMatch(/import\s+("[^"]+")/)
+    // the test should be exclude, the chunk content shouldn't import runtime module
+    // const text = await content.text()
+    // expect(text).toMatch(/import\s+("[^"]+")/)
   }
 })
 

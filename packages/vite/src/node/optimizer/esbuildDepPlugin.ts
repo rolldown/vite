@@ -218,6 +218,7 @@ export function rolldownDepPlugin(
       }
 
       if (id.startsWith(browserExternalNamespace)) {
+        const path = id.slice(browserExternalNamespace.length)
         if (config.isProduction) {
           return {
             code: 'module.exports = {}',
