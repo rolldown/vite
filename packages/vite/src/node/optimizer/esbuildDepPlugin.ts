@@ -1,6 +1,5 @@
 import path from 'node:path'
-import type { ImportKind } from 'esbuild'
-import type { Plugin } from '@rolldown/node'
+import type { Plugin, ImportKind } from '@rolldown/node'
 import { KNOWN_ASSET_TYPES } from '../constants'
 import type { PackageCache } from '../packages'
 import { getDepOptimizationConfig } from '../config'
@@ -148,8 +147,7 @@ export function rolldownDepPlugin(
       cjsPackageCache.clear()
     },
     resolveId: async function (id, importer, options) {
-      // TODO rolldown: kind is not available in rollup
-      const kind: ImportKind = options.kind
+      const kind = options.kind
       // externalize assets and commonly known non-js file types
       // See #8459 for more details about this require-import conversion
       if (allExternalTypesReg.test(id)) {
@@ -297,7 +295,7 @@ export function rolldownCjsExternalPlugin(
 
       if (filter.test(id)) {
         // TODO rolldown: kind is not available in rollup
-        const kind: ImportKind = options.kind
+        const kind = options.kind
         if (kind === 'require-call' && platform !== 'node') {
           return {
             id: cjsExternalFacadeNamespace + id,

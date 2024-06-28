@@ -7,7 +7,6 @@ import type { RollupOptions, RollupOutput } from '@rolldown/node'
 import * as rolldown from '@rolldown/node'
 import colors from 'picocolors'
 import type { BuildOptions as EsbuildBuildOptions, Loader } from 'esbuild'
-import { build } from 'esbuild'
 import { init, parse } from 'es-module-lexer'
 import glob from 'fast-glob'
 import { createFilter } from '@rollup/pluginutils'
@@ -1082,29 +1081,6 @@ function stringifyDepsOptimizerMetadata(
   )
 }
 
-function esbuildOutputFromId(
-  outputs: Record<string, any>,
-  id: string,
-  cacheDirOutputPath: string,
-): any {
-  const cwd = process.cwd()
-  const flatId = flattenId(id) + '.js'
-  const normalizedOutputPath = normalizePath(
-    path.relative(cwd, path.join(cacheDirOutputPath, flatId)),
-  )
-  const output = outputs[normalizedOutputPath]
-  if (output) {
-    return output
-  }
-  // If the root dir was symlinked, esbuild could return output keys as `../cwd/`
-  // Normalize keys to support this case too
-  for (const [key, value] of Object.entries(outputs)) {
-    if (normalizePath(path.relative(cwd, key)) === normalizedOutputPath) {
-      return value
-    }
-  }
-}
-
 export async function extractExportsData(
   filePath: string,
   config: ResolvedConfig,
@@ -1240,6 +1216,8 @@ export function getDepHash(config: ResolvedConfig, ssr: boolean): string {
         exclude: optimizeDeps?.exclude,
         rollupOptions: {
           ...optimizeDeps?.rollupOptions,
+          // TODO(underfin): the  rollupOptions.plugins how to exclude `ParallelPlugin`
+          // @ts-ignore
           plugins: optimizeDeps?.rollupOptions?.plugins?.map((p) => p.name),
         },
       },
