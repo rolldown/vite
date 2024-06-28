@@ -32,7 +32,7 @@ SOFTWARE.
 import fs from 'node:fs'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
-import { VERSION as rollupVersion } from 'rollup'
+// import { VERSION as rollupVersion } from 'rollup'
 import { parseAst as rollupParseAst } from 'rollup/parseAst'
 import type {
   AsyncPluginHooks,
@@ -56,7 +56,7 @@ import type {
   SourceDescription,
   SourceMap,
   TransformResult,
-} from 'rollup'
+} from '@rolldown/node'
 import type { RawSourceMap } from '@ampproject/remapping'
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import MagicString from 'magic-string'
@@ -185,7 +185,7 @@ export async function createPluginContainer(
 
   const minimalContext: MinimalPluginContext = {
     meta: {
-      rollupVersion,
+      // rollupVersion,
       watchMode: true,
     },
     debug: noop,
@@ -776,11 +776,11 @@ export async function createPluginContainer(
 
     async watchChange(id, change) {
       const ctx = new Context()
-      await hookParallel(
-        'watchChange',
-        () => ctx,
-        () => [id, change],
-      )
+      // await hookParallel(
+      //   'watchChange',
+      //   () => ctx,
+      //   () => [id, change],
+      // )
     },
 
     async close() {
@@ -793,11 +793,11 @@ export async function createPluginContainer(
         () => ctx,
         () => [],
       )
-      await hookParallel(
-        'closeBundle',
-        () => ctx,
-        () => [],
-      )
+      // await hookParallel(
+      //   'closeBundle',
+      //   () => ctx,
+      //   () => [],
+      // )
     },
     [ASYNC_DISPOSE]() {
       return this.close()

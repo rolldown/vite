@@ -1,6 +1,6 @@
 import path from 'node:path'
 import fsp from 'node:fs/promises'
-import type { ExistingRawSourceMap, SourceMap } from 'rollup'
+import type { ExistingRawSourceMap, SourceMap } from '@rolldown/node'
 import type { Logger } from '../logger'
 import { createDebugger } from '../utils'
 
@@ -96,16 +96,16 @@ export function applySourcemapIgnoreList(
   sourcemapIgnoreList: (sourcePath: string, sourcemapPath: string) => boolean,
   logger?: Logger,
 ): void {
-  let { x_google_ignoreList } = map
+  let { x_google_ignoreList, sources = [] } = map
   if (x_google_ignoreList === undefined) {
     x_google_ignoreList = []
   }
   for (
     let sourcesIndex = 0;
-    sourcesIndex < map.sources.length;
+    sourcesIndex < sources.length;
     ++sourcesIndex
   ) {
-    const sourcePath = map.sources[sourcesIndex]
+    const sourcePath = sources[sourcesIndex]
     if (!sourcePath) continue
 
     const ignoreList = sourcemapIgnoreList(

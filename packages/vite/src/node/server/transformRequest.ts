@@ -5,7 +5,7 @@ import getEtag from 'etag'
 import convertSourceMap from 'convert-source-map'
 import MagicString from 'magic-string'
 import { init, parse as parseImports } from 'es-module-lexer'
-import type { PartialResolvedId, SourceDescription, SourceMap } from 'rollup'
+import type { PartialResolvedId, SourceDescription, SourceMap } from '@rolldown/node'
 import colors from 'picocolors'
 import type { ModuleNode, ViteDevServer } from '..'
 import {

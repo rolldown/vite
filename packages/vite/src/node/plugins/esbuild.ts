@@ -318,18 +318,18 @@ export const buildEsbuildPlugin = (config: ResolvedConfig): Plugin => {
         // We don't need to create a MagicString here because both the helpers and
         // the headers don't modify the sourcemap
         const esbuildCode = res.code
-        const contentIndex =
-          opts.format === 'iife'
-            ? esbuildCode.match(IIFE_BEGIN_RE)?.index || 0
-            : opts.format === 'umd'
-            ? esbuildCode.indexOf(`(function(`) // same for minified or not
-            : 0
-        if (contentIndex > 0) {
-          const esbuildHelpers = esbuildCode.slice(0, contentIndex)
-          res.code = esbuildCode
-            .slice(contentIndex)
-            .replace(`"use strict";`, `"use strict";` + esbuildHelpers)
-        }
+        // const contentIndex =
+        //   opts.format === 'iife'
+        //     ? esbuildCode.match(IIFE_BEGIN_RE)?.index || 0
+        //     : opts.format === 'umd'
+        //     ? esbuildCode.indexOf(`(function(`) // same for minified or not
+        //     : 0
+        // if (contentIndex > 0) {
+        //   const esbuildHelpers = esbuildCode.slice(0, contentIndex)
+        //   res.code = esbuildCode
+        //     .slice(contentIndex)
+        //     .replace(`"use strict";`, `"use strict";` + esbuildHelpers)
+        // }
       }
 
       return res

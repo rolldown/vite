@@ -120,6 +120,7 @@ export function createPluginHookUtils(
     hookName: K,
   ): NonNullable<HookHandler<Plugin[K]>>[] {
     const plugins = getSortedPlugins(hookName)
+    // @ts-ignore
     return plugins.map((p) => getHookHandler(p[hookName])).filter(Boolean)
   }
 
@@ -140,14 +141,14 @@ export function getSortedPluginsByHook<K extends keyof Plugin>(
     const hook = plugin[hookName]
     if (hook) {
       if (typeof hook === 'object') {
-        if (hook.order === 'pre') {
-          pre.push(plugin)
-          continue
-        }
-        if (hook.order === 'post') {
-          post.push(plugin)
-          continue
-        }
+        // if (hook.order === 'pre') {
+        //   pre.push(plugin)
+        //   continue
+        // }
+        // if (hook.order === 'post') {
+        //   post.push(plugin)
+        //   continue
+        // }
       }
       normal.push(plugin)
     }

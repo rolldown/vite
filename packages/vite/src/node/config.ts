@@ -9,7 +9,7 @@ import colors from 'picocolors'
 import type { Alias, AliasOptions } from 'dep-types/alias'
 import aliasPlugin from '@rollup/plugin-alias'
 import { build } from 'esbuild'
-import type { RollupOptions } from 'rollup'
+import type { RollupOptions } from '@rolldown/node'
 import type { HookHandler, Plugin, PluginWithRequiredHook } from './plugin'
 import type {
   BuildOptions,
@@ -831,26 +831,26 @@ export async function resolveConfig(
 
   // Check if all assetFileNames have the same reference.
   // If not, display a warn for user.
-  const outputOption = config.build?.rollupOptions?.output ?? []
-  // Use isArray to narrow its type to array
-  if (Array.isArray(outputOption)) {
-    const assetFileNamesList = outputOption.map(
-      (output) => output.assetFileNames,
-    )
-    if (assetFileNamesList.length > 1) {
-      const firstAssetFileNames = assetFileNamesList[0]
-      const hasDifferentReference = assetFileNamesList.some(
-        (assetFileNames) => assetFileNames !== firstAssetFileNames,
-      )
-      if (hasDifferentReference) {
-        resolved.logger.warn(
-          colors.yellow(`
-assetFileNames isn't equal for every build.rollupOptions.output. A single pattern across all outputs is supported by Vite.
-`),
-        )
-      }
-    }
-  }
+//   const outputOption = config.build?.rollupOptions?.output ?? []
+//   // Use isArray to narrow its type to array
+//   if (Array.isArray(outputOption)) {
+//     const assetFileNamesList = outputOption.map(
+//       (output) => output.assetFileNames,
+//     )
+//     if (assetFileNamesList.length > 1) {
+//       const firstAssetFileNames = assetFileNamesList[0]
+//       const hasDifferentReference = assetFileNamesList.some(
+//         (assetFileNames) => assetFileNames !== firstAssetFileNames,
+//       )
+//       if (hasDifferentReference) {
+//         resolved.logger.warn(
+//           colors.yellow(`
+// assetFileNames isn't equal for every build.rollupOptions.output. A single pattern across all outputs is supported by Vite.
+// `),
+//         )
+//       }
+//     }
+//   }
 
   // Warn about removal of experimental features
   if (

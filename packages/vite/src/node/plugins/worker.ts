@@ -1,6 +1,6 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
-import type { EmittedAsset, OutputChunk } from 'rollup'
+import type { EmittedAsset, OutputChunk } from '@rolldown/node'
 import type { ResolvedConfig } from '../config'
 import type { Plugin } from '../plugin'
 import type { ViteDevServer } from '../server'
@@ -47,16 +47,16 @@ async function bundleWorkerEntry(
   query: Record<string, string> | null,
 ): Promise<OutputChunk> {
   // bundle the file as entry to support imports
-  const { rollup } = await import('rollup')
+  const { rolldown } = await import('@rolldown/node')
   const { plugins, rollupOptions, format } = config.worker
-  const bundle = await rollup({
+  const bundle = await rolldown({
     ...rollupOptions,
     input: cleanUrl(id),
     plugins: await plugins(),
     onwarn(warning, warn) {
       onRollupWarning(warning, warn, config)
     },
-    preserveEntrySignatures: false,
+    // preserveEntrySignatures: false,
   })
   let chunk: OutputChunk
   try {
@@ -98,7 +98,7 @@ async function bundleWorkerEntry(
       }
     })
   } finally {
-    await bundle.close()
+    // await bundle.close()
   }
   return emitSourcemapForWorkerEntry(config, query, chunk)
 }
@@ -165,14 +165,14 @@ export async function workerFileToUrl(
 export function webWorkerPostPlugin(): Plugin {
   return {
     name: 'vite:worker-post',
-    resolveImportMeta(property, { chunkId, format }) {
-      // document is undefined in the worker, so we need to avoid it in iife
-      if (property === 'url' && format === 'iife') {
-        return 'self.location.href'
-      }
+    // resolveImportMeta(property, { chunkId, format }) {
+    //   // document is undefined in the worker, so we need to avoid it in iife
+    //   if (property === 'url' && format === 'iife') {
+    //     return 'self.location.href'
+    //   }
 
-      return null
-    },
+    //   return null
+    // },
   }
 }
 
@@ -217,11 +217,11 @@ export function webWorkerPlugin(config: ResolvedConfig): Plugin {
       }
     },
 
-    shouldTransformCachedModule({ id }) {
-      if (isBuild && config.build.watch && isWorkerQueryId(id)) {
-        return true
-      }
-    },
+    // shouldTransformCachedModule({ id }) {
+    //   if (isBuild && config.build.watch && isWorkerQueryId(id)) {
+    //     return true
+    //   }
+    // },
 
     async transform(raw, id, options) {
       const ssr = options?.ssr === true

@@ -11,7 +11,7 @@ import type {
   RenderedChunk,
   RollupError,
   SourceMapInput,
-} from 'rollup'
+} from '@rolldown/node'
 import { dataToEsm } from '@rollup/pluginutils'
 import colors from 'picocolors'
 import MagicString from 'magic-string'
@@ -26,7 +26,7 @@ import { formatMessages, transform } from 'esbuild'
 import type { RawSourceMap } from '@ampproject/remapping'
 import { getCodeWithSourcemap, injectSourcesContent } from '../server/sourcemap'
 import type { ModuleNode } from '../server/moduleGraph'
-import type { ResolveFn, ViteDevServer } from '../'
+import type { ResolveFn, ViteDevServer } from '..'
 import { resolveUserExternal, toOutputFilePathInCss } from '../build'
 import {
   CLIENT_PUBLIC_PATH,
@@ -304,11 +304,11 @@ export function cssPlugin(config: ResolvedConfig): Plugin {
       }
 
       // track deps for build watch mode
-      if (config.command === 'build' && config.build.watch && deps) {
-        for (const file of deps) {
-          this.addWatchFile(file)
-        }
-      }
+      // if (config.command === 'build' && config.build.watch && deps) {
+      //   for (const file of deps) {
+      //     this.addWatchFile(file)
+      //   }
+      // }
 
       // dev
       if (server) {

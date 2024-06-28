@@ -2,11 +2,11 @@ import path from 'node:path'
 import { gzip } from 'node:zlib'
 import { promisify } from 'node:util'
 import colors from 'picocolors'
-import type { Plugin } from 'rollup'
+import type { Plugin } from '@rolldown/node'
 import type { ResolvedConfig } from '../config'
 import {
   isDefined,
-  isInNodeModules,
+  // isInNodeModules,
   normalizePath,
   withTrailingSlash,
 } from '../utils'
@@ -47,7 +47,7 @@ export function buildReporterPlugin(config: ResolvedConfig): Plugin {
   let transformedCount = 0
   let chunkCount = 0
   let compressedCount = 0
-  let startTime = Date.now()
+  // let startTime = Date.now()
 
   async function getCompressedSize(
     code: string | Uint8Array,
@@ -101,7 +101,7 @@ export function buildReporterPlugin(config: ResolvedConfig): Plugin {
     },
 
     options() {
-      startTime = Date.now()
+      // startTime = Date.now()
     },
 
     buildStart() {
@@ -124,50 +124,50 @@ export function buildReporterPlugin(config: ResolvedConfig): Plugin {
       compressedCount = 0
     },
 
-    renderChunk(code, chunk, options) {
-      if (!options.inlineDynamicImports) {
-        for (const id of chunk.moduleIds) {
-          const module = this.getModuleInfo(id)
-          if (!module) continue
-          // When a dynamic importer shares a chunk with the imported module,
-          // warn that the dynamic imported module will not be moved to another chunk (#12850).
-          if (module.importers.length && module.dynamicImporters.length) {
-            // Filter out the intersection of dynamic importers and sibling modules in
-            // the same chunk. The intersecting dynamic importers' dynamic import is not
-            // expected to work. Note we're only detecting the direct ineffective
-            // dynamic import here.
-            const detectedIneffectiveDynamicImport =
-              module.dynamicImporters.some(
-                (id) => !isInNodeModules(id) && chunk.moduleIds.includes(id),
-              )
-            if (detectedIneffectiveDynamicImport) {
-              this.warn(
-                `\n(!) ${
-                  module.id
-                } is dynamically imported by ${module.dynamicImporters.join(
-                  ', ',
-                )} but also statically imported by ${module.importers.join(
-                  ', ',
-                )}, dynamic import will not move module into another chunk.\n`,
-              )
-            }
-          }
-        }
-      }
+    // renderChunk(code, chunk, options) {
+    //   if (!options.inlineDynamicImports) {
+    //     for (const id of chunk.moduleIds) {
+    //       const module = this.getModuleInfo(id)
+    //       if (!module) continue
+    //       // When a dynamic importer shares a chunk with the imported module,
+    //       // warn that the dynamic imported module will not be moved to another chunk (#12850).
+    //       if (module.importers.length && module.dynamicImporters.length) {
+    //         // Filter out the intersection of dynamic importers and sibling modules in
+    //         // the same chunk. The intersecting dynamic importers' dynamic import is not
+    //         // expected to work. Note we're only detecting the direct ineffective
+    //         // dynamic import here.
+    //         const detectedIneffectiveDynamicImport =
+    //           module.dynamicImporters.some(
+    //             (id) => !isInNodeModules(id) && chunk.moduleIds.includes(id),
+    //           )
+    //         if (detectedIneffectiveDynamicImport) {
+    //           this.warn(
+    //             `\n(!) ${
+    //               module.id
+    //             } is dynamically imported by ${module.dynamicImporters.join(
+    //               ', ',
+    //             )} but also statically imported by ${module.importers.join(
+    //               ', ',
+    //             )}, dynamic import will not move module into another chunk.\n`,
+    //           )
+    //         }
+    //       }
+    //     }
+    //   }
 
-      chunkCount++
-      if (shouldLogInfo) {
-        if (!tty) {
-          if (!hasRenderedChunk) {
-            config.logger.info('rendering chunks...')
-          }
-        } else {
-          writeLine(`rendering chunks (${chunkCount})...`)
-        }
-        hasRenderedChunk = true
-      }
-      return null
-    },
+    //   chunkCount++
+    //   if (shouldLogInfo) {
+    //     if (!tty) {
+    //       if (!hasRenderedChunk) {
+    //         config.logger.info('rendering chunks...')
+    //       }
+    //     } else {
+    //       writeLine(`rendering chunks (${chunkCount})...`)
+    //     }
+    //     hasRenderedChunk = true
+    //   }
+    //   return null
+    // },
 
     generateBundle() {
       if (shouldLogInfo && tty) clearLine()
@@ -300,15 +300,15 @@ export function buildReporterPlugin(config: ResolvedConfig): Plugin {
       }
     },
 
-    closeBundle() {
-      if (shouldLogInfo && !config.build.watch) {
-        config.logger.info(
-          `${colors.green(
-            `✓ built in ${displayTime(Date.now() - startTime)}`,
-          )}`,
-        )
-      }
-    },
+    // closeBundle() {
+    //   if (shouldLogInfo && !config.build.watch) {
+    //     config.logger.info(
+    //       `${colors.green(
+    //         `✓ built in ${displayTime(Date.now() - startTime)}`,
+    //       )}`,
+    //     )
+    //   }
+    // },
   }
 }
 
@@ -337,22 +337,22 @@ function throttle(fn: Function) {
   }
 }
 
-function displayTime(time: number) {
-  // display: {X}ms
-  if (time < 1000) {
-    return `${time}ms`
-  }
+// function displayTime(time: number) {
+//   // display: {X}ms
+//   if (time < 1000) {
+//     return `${time}ms`
+//   }
 
-  time = time / 1000
+//   time = time / 1000
 
-  // display: {X}s
-  if (time < 60) {
-    return `${time.toFixed(2)}s`
-  }
+//   // display: {X}s
+//   if (time < 60) {
+//     return `${time.toFixed(2)}s`
+//   }
 
-  const mins = parseInt((time / 60).toString())
-  const seconds = time % 60
+//   const mins = parseInt((time / 60).toString())
+//   const seconds = time % 60
 
-  // display: {X}m {Y}s
-  return `${mins}m${seconds < 1 ? '' : ` ${seconds.toFixed(0)}s`}`
-}
+//   // display: {X}m {Y}s
+//   return `${mins}m${seconds < 1 ? '' : ` ${seconds.toFixed(0)}s`}`
+// }

@@ -124,11 +124,11 @@ export function workerImportMetaUrlPlugin(config: ResolvedConfig): Plugin {
   return {
     name: 'vite:worker-import-meta-url',
 
-    shouldTransformCachedModule({ code }) {
-      if (isBuild && config.build.watch && isIncludeWorkerImportMetaUrl(code)) {
-        return true
-      }
-    },
+    // shouldTransformCachedModule({ code }) {
+    //   if (isBuild && config.build.watch && isIncludeWorkerImportMetaUrl(code)) {
+    //     return true
+    //   }
+    // },
 
     async transform(code, id, options) {
       const ssr = options?.ssr === true

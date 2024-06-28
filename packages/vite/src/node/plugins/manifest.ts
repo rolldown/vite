@@ -1,5 +1,5 @@
 import path from 'node:path'
-import type { OutputAsset, OutputChunk } from 'rollup'
+import type { OutputAsset, OutputChunk } from '@rolldown/node'
 import jsonStableStringify from 'json-stable-stringify'
 import type { ResolvedConfig } from '..'
 import type { Plugin } from '../plugin'

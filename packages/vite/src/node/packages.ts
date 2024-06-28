@@ -241,18 +241,18 @@ export function watchPackageDataPlugin(packageCache: PackageCache): Plugin {
   return {
     name: 'vite:watch-package-data',
     buildStart() {
-      watchFile = this.addWatchFile.bind(this)
-      watchQueue.forEach(watchFile)
+      // watchFile = this.addWatchFile.bind(this)
+      // watchQueue.forEach(watchFile)
       watchQueue.clear()
     },
     buildEnd() {
       watchFile = watchFileStub
     },
-    watchChange(id) {
-      if (id.endsWith('/package.json')) {
-        invalidatePackageData(packageCache, path.normalize(id))
-      }
-    },
+    // watchChange(id) {
+    //   if (id.endsWith('/package.json')) {
+    //     invalidatePackageData(packageCache, path.normalize(id))
+    //   }
+    // },
     handleHotUpdate({ file }) {
       if (file.endsWith('/package.json')) {
         invalidatePackageData(packageCache, path.normalize(file))
