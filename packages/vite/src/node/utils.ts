@@ -1460,3 +1460,11 @@ export const teardownSIGTERMListener = (
     process.stdin.off('end', callback)
   }
 }
+
+export function parseRequest(id: string): Record<string, string> | null {
+  const [_, search] = id.split(requestQuerySplitRE, 2)
+  if (!search) {
+    return null
+  }
+  return Object.fromEntries(new URLSearchParams(search))
+}

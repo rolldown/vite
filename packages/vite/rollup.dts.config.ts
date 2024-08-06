@@ -97,7 +97,7 @@ function patchTypes(): Plugin {
         validateRuntimeChunk.call(this, chunk)
       } else {
         validateChunkImports.call(this, chunk)
-        code = replaceConfusingTypeNames.call(this, code, chunk)
+        if (0) code = replaceConfusingTypeNames.call(this, code, chunk)
         code = stripInternalTypes.call(this, code, chunk)
         code = cleanUnnecessaryComments(code)
       }

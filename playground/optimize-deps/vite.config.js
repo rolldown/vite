@@ -25,18 +25,31 @@ export default defineConfig({
       '@vitejs/test-dep-optimize-with-glob/**/*.js',
     ],
     exclude: ['@vitejs/test-nested-exclude', '@vitejs/test-dep-non-optimized'],
-    esbuildOptions: {
+    // esbuildOptions: {
+    //   plugins: [
+    //     {
+    //       name: 'replace-a-file',
+    //       setup(build) {
+    //         build.onLoad(
+    //           { filter: /dep-esbuild-plugin-transform(\\|\/)index\.js$/ },
+    //           () => ({
+    //             contents: `export const hello = () => 'Hello from an esbuild plugin'`,
+    //             loader: 'js',
+    //           }),
+    //         )
+    //       },
+    //     },
+    //   ],
+    // },
+    rollupOptions: {
       plugins: [
         {
           name: 'replace-a-file',
-          setup(build) {
-            build.onLoad(
-              { filter: /dep-esbuild-plugin-transform(\\|\/)index\.js$/ },
-              () => ({
-                contents: `export const hello = () => 'Hello from an esbuild plugin'`,
-                loader: 'js',
-              }),
-            )
+          load: (id) => {
+            // eslint-disable-next-line regexp/no-unused-capturing-group
+            if (/dep-esbuild-plugin-transform(\\|\/)index\.js$/.test(id)) {
+              return `export const hello = () => 'Hello from an esbuild plugin'`
+            }
           },
         },
       ],
@@ -136,18 +149,37 @@ function notjs() {
       return {
         optimizeDeps: {
           extensions: ['.notjs'],
-          esbuildOptions: {
+          // esbuildOptions: {
+          //   plugins: [
+          //     {
+          //       name: 'esbuild-notjs',
+          //       setup(build) {
+          //         build.onLoad({ filter: /\.notjs$/ }, ({ path }) => {
+          //           let contents = fs.readFileSync(path, 'utf-8')
+          //           contents = contents
+          //             .replace('<notjs>', '')
+          //             .replace('</notjs>', '')
+          //           return { contents, loader: 'js' }
+          //         })
+          //       },
+          //     },
+          //   ],
+          // },
+          rollupOptions: {
+            // moduleTypes: {
+            //   '.notjs': 'js',
+            // },
             plugins: [
               {
                 name: 'esbuild-notjs',
-                setup(build) {
-                  build.onLoad({ filter: /\.notjs$/ }, ({ path }) => {
-                    let contents = fs.readFileSync(path, 'utf-8')
+                load: (id) => {
+                  if (id.endsWith('.notjs')) {
+                    let contents = fs.readFileSync(id, 'utf-8')
                     contents = contents
                       .replace('<notjs>', '')
                       .replace('</notjs>', '')
-                    return { contents, loader: 'js' }
-                  })
+                    return contents
+                  }
                 },
               },
             ],
