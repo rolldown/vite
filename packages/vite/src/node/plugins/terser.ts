@@ -94,8 +94,8 @@ export function terserPlugin(config: ResolvedConfig): Plugin {
       }
     },
 
-    closeBundle() {
-      worker?.stop()
-    },
+    // closeBundle() {
+    //   worker?.stop()
+    // },
   }
 }

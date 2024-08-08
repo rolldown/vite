@@ -4,11 +4,11 @@ import type {
   ObjectHook,
   PluginContext,
   ResolveIdResult,
-  Plugin as RollupPlugin,
+  Plugin as RolldownPlugin,
   TransformPluginContext,
   TransformResult,
-} from 'rollup'
-export type { PluginContext } from 'rollup'
+} from 'rolldown'
+export type { PluginContext } from 'rolldown'
 import type { ConfigEnv, ResolvedConfig, UserConfig } from './config'
 import type { ServerHook } from './server'
 import type { IndexHtmlTransform } from './plugins/html'
@@ -37,7 +37,7 @@ import type { PreviewServerHook } from './preview'
  * If a plugin should be applied only for server or build, a function format
  * config file can be used to conditional determine the plugins to use.
  */
-export interface Plugin<A = any> extends RollupPlugin<A> {
+export interface Plugin<T = any> extends RolldownPlugin<T> {
   /**
    * Enforce plugin invocation tier similar to webpack loaders. Hooks ordering
    * is still subject to the `order` property in the hook object.
@@ -151,12 +151,13 @@ export interface Plugin<A = any> extends RollupPlugin<A> {
       source: string,
       importer: string | undefined,
       options: {
-        attributes: Record<string, string>
+        // TODO @underfin
+        // attributes: Record<string, string>
         custom?: CustomPluginOptions
         ssr?: boolean
-        /**
-         * @internal
-         */
+        // /**
+        //  * @internal
+        //  */
         scan?: boolean
         isEntry: boolean
       },

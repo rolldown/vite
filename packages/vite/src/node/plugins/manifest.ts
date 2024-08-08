@@ -4,12 +4,13 @@ import type {
   OutputAsset,
   OutputChunk,
   RenderedChunk,
-} from 'rollup'
+} from 'rolldown'
 import type { ResolvedConfig } from '..'
 import type { Plugin } from '../plugin'
 import { normalizePath, sortObjectKeys } from '../utils'
 import { generatedAssets } from './asset'
 import type { GeneratedAssetMeta } from './asset'
+import { getChunkMetadata } from './metadata'
 
 const endsWithJSRE = /\.[cm]?js$/
 
@@ -88,11 +89,11 @@ export function manifestPlugin(config: ResolvedConfig): Plugin {
           }
         }
 
-        if (chunk.viteMetadata?.importedCss.size) {
-          manifestChunk.css = [...chunk.viteMetadata.importedCss]
+        if (getChunkMetadata(chunk.name)?.importedCss.size) {
+          manifestChunk.css = [...getChunkMetadata(chunk.name)!.importedCss]
         }
-        if (chunk.viteMetadata?.importedAssets.size) {
-          manifestChunk.assets = [...chunk.viteMetadata.importedAssets]
+        if (getChunkMetadata(chunk.name)?.importedAssets.size) {
+          manifestChunk.assets = [...getChunkMetadata(chunk.name)!.importedAssets]
         }
 
         return manifestChunk
@@ -181,7 +182,8 @@ export function getChunkOriginalFileName(
 ): string {
   if (chunk.facadeModuleId) {
     let name = normalizePath(path.relative(root, chunk.facadeModuleId))
-    if (format === 'system' && !chunk.name.includes('-legacy')) {
+    // TODO @underfin format
+    if (/* format === 'system' && */ !chunk.name.includes('-legacy')) {
       const ext = path.extname(name)
       const endPos = ext.length !== 0 ? -ext.length : undefined
       name = name.slice(0, endPos) + `-legacy` + ext

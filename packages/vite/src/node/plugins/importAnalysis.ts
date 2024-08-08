@@ -319,7 +319,8 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
 
         const resolved = await this.resolve(url, importerFile)
 
-        if (!resolved || resolved.meta?.['vite:alias']?.noResolved) {
+        // TODO @underfin `ResolveResult#meta`
+        if (!resolved /* || resolved.meta?.['vite:alias']?.noResolved */) {
           // in ssr, we should let node handle the missing modules
           if (ssr) {
             return [url, url]

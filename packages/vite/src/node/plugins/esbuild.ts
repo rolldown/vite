@@ -8,7 +8,7 @@ import type {
 } from 'esbuild'
 import { transform } from 'esbuild'
 import type { RawSourceMap } from '@ampproject/remapping'
-import type { InternalModuleFormat, SourceMap } from 'rollup'
+import type { InternalModuleFormat, SourceMap } from 'rolldown'
 import type { TSConfckParseResult } from 'tsconfck'
 import { TSConfckCache, TSConfckParseError, parse } from 'tsconfck'
 import {
@@ -27,8 +27,7 @@ const debug = createDebugger('vite:esbuild')
 
 // IIFE content looks like `var MyLib = function() {`.
 // Spaces are removed and parameters are mangled when minified
-const IIFE_BEGIN_RE =
-  /(?:const|var)\s+\S+\s*=\s*function\([^()]*\)\s*\{\s*"use strict";/
+// const IIFE_BEGIN_RE = (const|var)\s+\S+\s*=\s*function\([^()]*\)\s*\{\s*"use strict";/
 
 const validExtensionRE = /\.\w+$/
 const jsxExtensionsRE = /\.(?:j|t)sx\b/
@@ -329,19 +328,20 @@ export const buildEsbuildPlugin = (config: ResolvedConfig): Plugin => {
         // Instead, using plain string index manipulation (indexOf, slice) which is simple and performant
         // We don't need to create a MagicString here because both the helpers and
         // the headers don't modify the sourcemap
-        const esbuildCode = res.code
-        const contentIndex =
-          opts.format === 'iife'
-            ? Math.max(esbuildCode.search(IIFE_BEGIN_RE), 0)
-            : opts.format === 'umd'
-              ? esbuildCode.indexOf(`(function(`) // same for minified or not
-              : 0
-        if (contentIndex > 0) {
-          const esbuildHelpers = esbuildCode.slice(0, contentIndex)
-          res.code = esbuildCode
-            .slice(contentIndex)
-            .replace(`"use strict";`, `"use strict";` + esbuildHelpers)
-        }
+        // TODO @underfin format iife and umd
+        // const esbuildCode = res.code
+        // const contentIndex =
+        //   opts.format === 'iife'
+        //     ? Math.max(esbuildCode.search(IIFE_BEGIN_RE), 0)
+        //     : opts.format === 'umd'
+        //       ? esbuildCode.indexOf(`(function(`) // same for minified or not
+        //       : 0
+        // if (contentIndex > 0) {
+        //   const esbuildHelpers = esbuildCode.slice(0, contentIndex)
+        //   res.code = esbuildCode
+        //     .slice(contentIndex)
+        //     .replace(`"use strict";`, `"use strict";` + esbuildHelpers)
+        // }
       }
 
       return res

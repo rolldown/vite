@@ -56,7 +56,7 @@ import type {
   SourceDescription,
   SourceMap,
   TransformResult,
-} from 'rollup'
+} from 'rolldown'
 import type { RawSourceMap } from '@ampproject/remapping'
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import MagicString from 'magic-string'
@@ -473,11 +473,11 @@ class PluginContainer {
     id: string,
     change: { event: 'create' | 'update' | 'delete' },
   ): Promise<void> {
-    await this.hookParallel(
-      'watchChange',
-      (plugin) => this._getPluginContext(plugin, false),
-      () => [id, change],
-    )
+    // await this.hookParallel(
+    //   'watchChange',
+    //   (plugin) => this._getPluginContext(plugin, false),
+    //   () => [id, change],
+    // )
   }
 
   async close(): Promise<void> {
@@ -489,11 +489,11 @@ class PluginContainer {
       (plugin) => this._getPluginContext(plugin, false),
       () => [],
     )
-    await this.hookParallel(
-      'closeBundle',
-      (plugin) => this._getPluginContext(plugin, false),
-      () => [],
-    )
+    // await this.hookParallel(
+    //   'closeBundle',
+    //   (plugin) => this._getPluginContext(plugin, false),
+    //   () => [],
+    // )
   }
 }
 
@@ -503,14 +503,14 @@ class PluginContext implements Omit<RollupPluginContext, 'cache'> {
   protected _activeId: string | null = null
   protected _activeCode: string | null = null
 
-  meta: RollupPluginContext['meta']
+  // meta: RollupPluginContext['meta']
 
   constructor(
     public _plugin: Plugin,
     public _container: PluginContainer,
     public ssr: boolean,
   ) {
-    this.meta = this._container.minimalContext.meta
+    // this.meta = this._container.minimalContext.meta
   }
 
   parse(code: string, opts: any): ReturnType<RollupPluginContext['parse']> {
@@ -894,7 +894,7 @@ class TransformPluginContext
         includeContent: true,
         hires: 'boundary',
         source: cleanUrl(this.filename),
-      })
+      }) as SourceMap
     }
     return map
   }

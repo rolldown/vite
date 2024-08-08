@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import colors from 'picocolors'
-import type { PartialResolvedId } from 'rollup'
+import type { PartialResolvedId } from 'rolldown'
 import { exports, imports } from 'resolve.exports'
 import { hasESMSyntax } from 'mlly'
 import type { Plugin } from '../plugin'

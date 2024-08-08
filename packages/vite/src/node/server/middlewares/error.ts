@@ -1,6 +1,6 @@
 import path from 'node:path'
 import colors from 'picocolors'
-import type { RollupError } from 'rollup'
+import type { RollupError } from 'rolldown'
 import type { Connect } from 'dep-types/connect'
 import strip from 'strip-ansi'
 import type { ErrorPayload } from 'types/hmrPayload'

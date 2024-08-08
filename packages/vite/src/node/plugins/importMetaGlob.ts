@@ -10,11 +10,13 @@ import type {
   SpreadElement,
   TemplateLiteral,
 } from 'estree'
-import type { CustomPluginOptions, RollupAstNode, RollupError } from 'rollup'
+import type { /* CustomPluginOptions, */ RollupError } from 'rolldown'
 import MagicString from 'magic-string'
 import fg from 'fast-glob'
 import { stringifyQuery } from 'ufo'
 import type { GeneralImportGlobOptions } from 'types/importGlob'
+// TODO @underfin Here using rollup ast parse, it will replaced by rolldown `BuiltinGlobImportPlugin`
+import type { RollupAstNode } from 'rollup'
 import { parseAstAsync } from 'rollup/parseAst'
 import type { Plugin } from '../plugin'
 import type { ViteDevServer } from '../server'
@@ -503,10 +505,11 @@ type IdResolver = (
   id: string,
   importer?: string,
   options?: {
-    attributes?: Record<string, string>
-    custom?: CustomPluginOptions
-    isEntry?: boolean
-    skipSelf?: boolean
+    // TODO @underfin
+    // attributes?: Record<string, string>
+    // custom?: CustomPluginOptions
+    // isEntry?: boolean
+    // skipSelf?: boolean
   },
 ) => Promise<string | undefined> | string | undefined
 

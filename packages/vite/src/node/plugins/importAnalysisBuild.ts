@@ -5,7 +5,7 @@ import type {
   ImportSpecifier,
 } from 'es-module-lexer'
 import { init, parse as parseImports } from 'es-module-lexer'
-import type { SourceMap } from 'rollup'
+import type { SourceMap } from 'rolldown'
 import type { RawSourceMap } from '@ampproject/remapping'
 import convertSourceMap from 'convert-source-map'
 import {
@@ -20,6 +20,7 @@ import { toOutputFilePathInJS } from '../build'
 import { genSourceMapUrl } from '../server/sourcemap'
 import { removedPureCssFilesCache } from './css'
 import { createParseErrorInfo } from './importAnalysis'
+import { getChunkMetadata } from './metadata'
 
 type FileDep = {
   url: string
@@ -545,7 +546,7 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
                       chunk.imports.forEach(addDeps)
                       // Ensure that the css imported by current chunk is loaded after the dependencies.
                       // So the style of current chunk won't be overwritten unexpectedly.
-                      chunk.viteMetadata!.importedCss.forEach((file) => {
+                      getChunkMetadata(chunk.name)!.importedCss.forEach((file) => {
                         deps.add(file)
                       })
                     }
@@ -554,8 +555,8 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
                       removedPureCssFilesCache.get(config)!
                     const chunk = removedPureCssFiles.get(filename)
                     if (chunk) {
-                      if (chunk.viteMetadata!.importedCss.size) {
-                        chunk.viteMetadata!.importedCss.forEach((file) => {
+                      if (getChunkMetadata(chunk.name)!.importedCss.size) {
+                        getChunkMetadata(chunk.name)!.importedCss.forEach((file) => {
                           deps.add(file)
                         })
                         hasRemovedPureCssChunk = true
@@ -701,7 +702,8 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
                 nextMap as RawSourceMap,
                 chunk.map as RawSourceMap,
               ]) as SourceMap
-              map.toUrl = () => genSourceMapUrl(map)
+              // TODO: The rolldown `Sourcemap` is not unsupported yet
+              // map.toUrl = () => genSourceMapUrl(map)
               chunk.map = map
 
               if (config.build.sourcemap === 'inline') {

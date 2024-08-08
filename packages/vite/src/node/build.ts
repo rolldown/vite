@@ -14,10 +14,9 @@ import type {
   RollupLog,
   RollupOptions,
   RollupOutput,
-  RollupWatcher,
-  WatcherOptions,
-} from 'rollup'
-import commonjsPlugin from '@rollup/plugin-commonjs'
+  // RollupWatcher,
+  // WatcherOptions,
+} from 'rolldown'
 import type { RollupCommonJSOptions } from 'dep-types/commonjs'
 import type { RollupDynamicImportVarsOptions } from 'dep-types/dynamicImportVars'
 import type { TransformOptions } from 'esbuild'
@@ -53,7 +52,7 @@ import { findNearestPackageData } from './packages'
 import type { PackageCache } from './packages'
 import {
   getResolvedOutDirs,
-  resolveChokidarOptions,
+  // resolveChokidarOptions,
   resolveEmptyOutDir,
 } from './watch'
 import { completeSystemWrapPlugin } from './plugins/completeSystemWrap'
@@ -246,7 +245,7 @@ export interface BuildOptions {
    * https://rollupjs.org/configuration-options/#watch
    * @default null
    */
-  watch?: WatcherOptions | null
+  // watch?: WatcherOptions | null
 }
 
 export interface LibraryOptions {
@@ -272,7 +271,7 @@ export interface LibraryOptions {
   fileName?: string | ((format: ModuleFormat, entryName: string) => string)
 }
 
-export type LibraryFormats = 'es' | 'cjs' | 'umd' | 'iife' | 'system'
+export type LibraryFormats = 'es' | 'cjs' | 'iife' /*| 'umd'  | 'system'*/
 
 export interface ModulePreloadOptions {
   /**
@@ -352,7 +351,7 @@ export function resolveBuildOptions(
     ssrEmitAssets: false,
     reportCompressedSize: true,
     chunkSizeWarningLimit: 500,
-    watch: null,
+    // watch: null,
   }
 
   const userBuildOptions = raw
@@ -429,15 +428,16 @@ export async function resolveBuildPlugins(config: ResolvedConfig): Promise<{
   post: Plugin[]
 }> {
   const options = config.build
-  const { commonjsOptions } = options
-  const usePluginCommonjs =
-    !Array.isArray(commonjsOptions?.include) ||
-    commonjsOptions?.include.length !== 0
+  // Note: The rolldown internal support commonjs
+  // const { commonjsOptions } = options
+  // const usePluginCommonjs =
+  //   !Array.isArray(commonjsOptions?.include) ||
+  //   commonjsOptions?.include.length !== 0
   const rollupOptionsPlugins = options.rollupOptions.plugins
   return {
     pre: [
       completeSystemWrapPlugin(),
-      ...(usePluginCommonjs ? [commonjsPlugin(options.commonjsOptions)] : []),
+      // ...(usePluginCommonjs ? [commonjsPlugin(options.commonjsOptions)] : []),
       dataURIPlugin(),
       ...((await asyncFlatten(arraify(rollupOptionsPlugins))).filter(
         Boolean,
@@ -466,7 +466,7 @@ export async function resolveBuildPlugins(config: ResolvedConfig): Promise<{
  */
 export async function build(
   inlineConfig: InlineConfig = {},
-): Promise<RollupOutput | RollupOutput[] | RollupWatcher> {
+): Promise<RollupOutput | RollupOutput[] /*| RollupWatcher */> {
   const config = await resolveConfig(
     inlineConfig,
     'build',
@@ -531,12 +531,13 @@ export async function build(
   ) as Plugin[]
 
   const rollupOptions: RollupOptions = {
-    preserveEntrySignatures: ssr
-      ? 'allow-extension'
-      : libOptions
-        ? 'strict'
-        : false,
-    cache: config.build.watch ? undefined : false,
+    // TODO @underfin preserveEntrySignatures
+    // preserveEntrySignatures: ssr
+    //   ? 'allow-extension'
+    //   : libOptions
+    //     ? 'strict'
+    //     : false,
+    // cache: config.build.watch ? undefined : false,
     ...options.rollupOptions,
     input,
     plugins,
@@ -600,11 +601,11 @@ export async function build(
     }
   }
 
-  const outputBuildError = (e: RollupError) => {
-    enhanceRollupError(e)
-    clearLine()
-    logger.error(e.message, { error: e })
-  }
+  // const outputBuildError = (e: RollupError) => {
+  //   enhanceRollupError(e)
+  //   clearLine()
+  //   config.logger.error(e.message, { error: e })
+  // }
 
   let bundle: RollupBuild | undefined
   let startTime: number | undefined
@@ -618,12 +619,12 @@ export async function build(
             `Please use "rollupOptions.output" instead.`,
         )
       }
-      if (output.file) {
-        throw new Error(
-          `Vite does not support "rollupOptions.output.file". ` +
-            `Please use "rollupOptions.output.dir" and "rollupOptions.output.entryFileNames" instead.`,
-        )
-      }
+      // if (output.file) {
+      //   throw new Error(
+      //     `Vite does not support "rollupOptions.output.file". ` +
+      //       `Please use "rollupOptions.output.dir" and "rollupOptions.output.entryFileNames" instead.`,
+      //   )
+      // }
       if (output.sourcemap) {
         logger.warnOnce(
           colors.yellow(
@@ -634,7 +635,7 @@ export async function build(
       }
 
       const ssrNodeBuild = ssr && config.ssr.target === 'node'
-      const ssrWorkerBuild = ssr && config.ssr.target === 'webworker'
+      // const ssrWorkerBuild = ssr && config.ssr.target === 'webworker'
 
       const format = output.format || 'es'
       const jsExt =
@@ -649,26 +650,31 @@ export async function build(
         dir: outDir,
         // Default format is 'es' for regular and for SSR builds
         format,
-        exports: 'auto',
+        // exports: 'auto',
         sourcemap: options.sourcemap,
-        name: libOptions ? libOptions.name : undefined,
-        hoistTransitiveImports: libOptions ? false : undefined,
+        // name: libOptions ? libOptions.name : undefined,
+        // hoistTransitiveImports: libOptions ? false : undefined,
         // es2015 enables `generatedCode.symbols`
         // - #764 add `Symbol.toStringTag` when build es module into cjs chunk
         // - #1048 add `Symbol.toStringTag` for module default export
-        generatedCode: 'es2015',
+        // generatedCode: 'es2015',
+        // entryFileNames: ssr
+        //   ? `[name].${jsExt}`
+        //   : libOptions
+        //     ? ({ name }) =>
+        //         resolveLibFilename(
+        //           libOptions,
+        //           format,
+        //           name,
+        //           config.root,
+        //           jsExt,
+        //           config.packageCache,
+        //         )
+        //     : path.posix.join(options.assetsDir, `[name]-[hash].${jsExt}`),
         entryFileNames: ssr
           ? `[name].${jsExt}`
           : libOptions
-            ? ({ name }) =>
-                resolveLibFilename(
-                  libOptions,
-                  format,
-                  name,
-                  config.root,
-                  jsExt,
-                  config.packageCache,
-                )
+            ? `[name]-[hash].${jsExt}`
             : path.posix.join(options.assetsDir, `[name]-[hash].${jsExt}`),
         chunkFileNames: libOptions
           ? `[name]-[hash].${jsExt}`
@@ -676,11 +682,11 @@ export async function build(
         assetFileNames: libOptions
           ? `[name].[ext]`
           : path.posix.join(options.assetsDir, `[name]-[hash].[ext]`),
-        inlineDynamicImports:
-          output.format === 'umd' ||
-          output.format === 'iife' ||
-          (ssrWorkerBuild &&
-            (typeof input === 'string' || Object.keys(input).length === 1)),
+        // inlineDynamicImports:
+        // output.format === 'umd' ||
+        // output.format === 'iife' ||
+        // (ssrWorkerBuild &&
+        //   (typeof input === 'string' || Object.keys(input).length === 1)),
         ...output,
       }
     }
@@ -714,47 +720,47 @@ export async function build(
     )
 
     // watch file changes with rollup
-    if (config.build.watch) {
-      logger.info(colors.cyan(`\nwatching for file changes...`))
+    // if (config.build.watch) {
+    //   config.logger.info(colors.cyan(`\nwatching for file changes...`))
 
-      const resolvedChokidarOptions = resolveChokidarOptions(
-        config,
-        config.build.watch.chokidar,
-        resolvedOutDirs,
-        emptyOutDir,
-      )
+    //   const resolvedChokidarOptions = resolveChokidarOptions(
+    //     config,
+    //     config.build.watch.chokidar,
+    //     resolvedOutDirs,
+    //     emptyOutDir,
+    //   )
 
-      const { watch } = await import('rollup')
-      const watcher = watch({
-        ...rollupOptions,
-        output: normalizedOutputs,
-        watch: {
-          ...config.build.watch,
-          chokidar: resolvedChokidarOptions,
-        },
-      })
+    //   const { watch } = await import('rollup')
+    //   const watcher = watch({
+    //     ...rollupOptions,
+    //     output: normalizedOutputs,
+    //     watch: {
+    //       ...config.build.watch,
+    //       chokidar: resolvedChokidarOptions,
+    //     },
+    //   })
 
-      watcher.on('event', (event) => {
-        if (event.code === 'BUNDLE_START') {
-          logger.info(colors.cyan(`\nbuild started...`))
-          if (options.write) {
-            prepareOutDir(resolvedOutDirs, emptyOutDir, config)
-          }
-        } else if (event.code === 'BUNDLE_END') {
-          event.result.close()
-          logger.info(colors.cyan(`built in ${event.duration}ms.`))
-        } else if (event.code === 'ERROR') {
-          outputBuildError(event.error)
-        }
-      })
+    //   watcher.on('event', (event) => {
+    //     if (event.code === 'BUNDLE_START') {
+    //       config.logger.info(colors.cyan(`\nbuild started...`))
+    //       if (options.write) {
+    //         prepareOutDir(resolvedOutDirs, emptyOutDir, config)
+    //       }
+    //     } else if (event.code === 'BUNDLE_END') {
+    //       event.result.close()
+    //       config.logger.info(colors.cyan(`built in ${event.duration}ms.`))
+    //     } else if (event.code === 'ERROR') {
+    //       outputBuildError(event.error)
+    //     }
+    //   })
 
-      return watcher
-    }
+    //   return watcher
+    // }
 
     // write or generate files with rollup
-    const { rollup } = await import('rollup')
+    const { rolldown } = await import('rolldown')
     startTime = Date.now()
-    bundle = await rollup(rollupOptions)
+    bundle = await rolldown(rollupOptions)
 
     if (options.write) {
       prepareOutDir(resolvedOutDirs, emptyOutDir, config)
@@ -779,7 +785,7 @@ export async function build(
     }
     throw e
   } finally {
-    if (bundle) await bundle.close()
+    // if (bundle) await bundle.close()
   }
 }
 
@@ -841,7 +847,7 @@ function resolveOutputJsExtension(
   type: string = 'commonjs',
 ): JsExt {
   if (type === 'module') {
-    return format === 'cjs' || format === 'umd' ? 'cjs' : 'js'
+    return format === 'cjs' /* || format === 'umd'  */ ? 'cjs' : 'js'
   } else {
     return format === 'es' ? 'mjs' : 'js'
   }
@@ -891,22 +897,22 @@ export function resolveBuildOutputs(
       Object.values(libOptions.entry).length > 1
     const libFormats =
       libOptions.formats ||
-      (libHasMultipleEntries ? ['es', 'cjs'] : ['es', 'umd'])
+      (libHasMultipleEntries ? ['es', 'cjs'] : ['es' /* 'umd' */])
 
     if (!Array.isArray(outputs)) {
-      if (libFormats.includes('umd') || libFormats.includes('iife')) {
-        if (libHasMultipleEntries) {
-          throw new Error(
-            'Multiple entry points are not supported when output formats include "umd" or "iife".',
-          )
-        }
+      // if (libFormats.includes('umd') || libFormats.includes('iife')) {
+      //   if (libHasMultipleEntries) {
+      //     throw new Error(
+      //       'Multiple entry points are not supported when output formats include "umd" or "iife".',
+      //     )
+      //   }
 
-        if (!libOptions.name) {
-          throw new Error(
-            'Option "build.lib.name" is required when output formats include "umd" or "iife".',
-          )
-        }
-      }
+      //   if (!libOptions.name) {
+      //     throw new Error(
+      //       'Option "build.lib.name" is required when output formats include "umd" or "iife".',
+      //     )
+      //   }
+      // }
 
       return libFormats.map((format) => ({ ...outputs, format }))
     }
@@ -920,16 +926,16 @@ export function resolveBuildOutputs(
       )
     }
 
-    outputs.forEach((output) => {
-      if (
-        (output.format === 'umd' || output.format === 'iife') &&
-        !output.name
-      ) {
-        throw new Error(
-          'Entries in "build.rollupOptions.output" must specify "name" when the format is "umd" or "iife".',
-        )
-      }
-    })
+    // outputs.forEach((output) => {
+    //   if (
+    //     (output.format === 'umd' || output.format === 'iife') &&
+    //     !output.name
+    //   ) {
+    //     throw new Error(
+    //       'Entries in "build.rollupOptions.output" must specify "name" when the format is "umd" or "iife".',
+    //     )
+    //   }
+    // })
   }
 
   return outputs
@@ -1147,12 +1153,12 @@ const relativeUrlMechanisms: Record<
   InternalModuleFormat,
   (relativePath: string) => string
 > = {
-  amd: (relativePath) => {
-    if (relativePath[0] !== '.') relativePath = './' + relativePath
-    return getResolveUrl(
-      `require.toUrl('${escapeId(relativePath)}'), document.baseURI`,
-    )
-  },
+  // amd: (relativePath) => {
+  //   if (relativePath[0] !== '.') relativePath = './' + relativePath
+  //   return getResolveUrl(
+  //     `require.toUrl('${escapeId(relativePath)}'), document.baseURI`,
+  //   )
+  // },
   cjs: (relativePath) =>
     `(typeof document === 'undefined' ? ${getFileUrlFromRelativePath(
       relativePath,
@@ -1162,15 +1168,15 @@ const relativeUrlMechanisms: Record<
       `'${escapeId(partialEncodeURIPath(relativePath))}', import.meta.url`,
     ),
   iife: (relativePath) => getRelativeUrlFromDocument(relativePath),
-  // NOTE: make sure rollup generate `module` params
-  system: (relativePath) =>
-    getResolveUrl(
-      `'${escapeId(partialEncodeURIPath(relativePath))}', module.meta.url`,
-    ),
-  umd: (relativePath) =>
-    `(typeof document === 'undefined' && typeof location === 'undefined' ? ${getFileUrlFromRelativePath(
-      relativePath,
-    )} : ${getRelativeUrlFromDocument(relativePath, true)})`,
+  // // NOTE: make sure rollup generate `module` params
+  // system: (relativePath) =>
+  //   getResolveUrl(
+  //     `'${escapeId(partialEncodeURIPath(relativePath))}', module.meta.url`,
+  //   ),
+  // umd: (relativePath) =>
+  //   `(typeof document === 'undefined' && typeof location === 'undefined' ? ${getFileUrlFromRelativePath(
+  //     relativePath,
+  //   )} : ${getRelativeUrlFromDocument(relativePath, true)})`,
 }
 /* end of copy */
 

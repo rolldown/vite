@@ -7,7 +7,7 @@ import type {
   NormalizedOutputOptions,
   PluginContext,
   RenderedChunk,
-} from 'rollup'
+} from 'rolldown'
 import MagicString from 'magic-string'
 import colors from 'picocolors'
 import {
@@ -31,6 +31,7 @@ import {
 import { DEFAULT_ASSETS_INLINE_LIMIT, FS_PREFIX } from '../constants'
 import type { ModuleGraph } from '../server/moduleGraph'
 import { cleanUrl, withTrailingSlash } from '../../shared/utils'
+import { getChunkMetadata } from './metadata'
 
 // referenceId is base64url but replaces - with $
 export const assetUrlRE = /__VITE_ASSET__([\w$]+)__(?:\$_(.*?)__)?/g
@@ -89,7 +90,7 @@ export function renderAssetUrlInJS(
     s ||= new MagicString(code)
     const [full, referenceId, postfix = ''] = match
     const file = ctx.getFileName(referenceId)
-    chunk.viteMetadata!.importedAssets.add(cleanUrl(file))
+    getChunkMetadata(chunk.name)!.importedAssets.add(cleanUrl(file))
     const filename = file + postfix
     const replacement = toOutputFilePathInJS(
       filename,
@@ -174,7 +175,10 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
       // raw requests, read from disk
       if (rawRE.test(id)) {
         const file = checkPublicFile(id, config) || cleanUrl(id)
-        this.addWatchFile(file)
+        if (config.command !== 'build') {
+          // @ts-expect-error
+          this.addWatchFile(file)
+        }
         // raw query, read file and return as string
         return `export default ${JSON.stringify(
           await fsp.readFile(file, 'utf-8'),

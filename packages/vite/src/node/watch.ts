@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import path from 'node:path'
 import glob from 'fast-glob'
 import type { FSWatcher, WatchOptions } from 'dep-types/chokidar'
-import type { OutputOptions } from 'rollup'
+import type { OutputOptions } from 'rolldown'
 import * as colors from 'picocolors'
 import { withTrailingSlash } from '../shared/utils'
 import { arraify, normalizePath } from './utils'
@@ -12,7 +12,7 @@ import type { Logger } from './logger'
 export function getResolvedOutDirs(
   root: string,
   outDir: string,
-  outputOptions: OutputOptions[] | OutputOptions | undefined,
+  outputOptions: OutputOptions | undefined,
 ): Set<string> {
   const resolvedOutDir = path.resolve(root, outDir)
   if (!outputOptions) return new Set([resolvedOutDir])

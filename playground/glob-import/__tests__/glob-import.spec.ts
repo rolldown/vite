@@ -43,7 +43,9 @@ const allResult = {
     default: 'hi',
   },
   '/dir/baz.json': json,
-  '/dir/foo.css': {},
+  '/dir/foo.css': {
+    default: {},
+  },
   '/dir/foo.js': {
     msg: 'foo',
   },

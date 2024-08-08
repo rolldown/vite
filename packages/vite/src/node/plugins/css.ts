@@ -13,7 +13,7 @@ import type {
   RenderedChunk,
   RollupError,
   SourceMapInput,
-} from 'rollup'
+} from 'rolldown'
 import { dataToEsm } from '@rollup/pluginutils'
 import colors from 'picocolors'
 import MagicString from 'magic-string'
@@ -84,6 +84,7 @@ import {
 } from './asset'
 import type { ESBuildOptions } from './esbuild'
 import { getChunkOriginalFileName } from './manifest'
+import { getChunkMetadata } from './metadata'
 
 const decoder = new TextDecoder()
 // const debug = createDebugger('vite:css')
@@ -379,8 +380,9 @@ export function cssPlugin(config: ResolvedConfig): Plugin {
         moduleCache.set(id, modules)
       }
 
-      if (deps) {
+      if (deps && !isBuild) {
         for (const file of deps) {
+          // @ts-expect-error
           this.addWatchFile(file)
         }
       }
@@ -488,6 +490,7 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
       if (config.command === 'serve') {
         const getContentWithSourcemap = async (content: string) => {
           if (config.css?.devSourcemap) {
+            // @ts-expect-error missing types
             const sourcemap = this.getCombinedSourcemap()
             if (sourcemap.mappings) {
               await injectSourcesContent(sourcemap, cleanUrl(id), config.logger)
@@ -601,7 +604,7 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
         // replace asset url references with resolved url.
         chunkCSS = chunkCSS.replace(assetUrlRE, (_, fileHash, postfix = '') => {
           const filename = this.getFileName(fileHash) + postfix
-          chunk.viteMetadata!.importedAssets.add(cleanUrl(filename))
+          getChunkMetadata(chunk.name)!.importedAssets.add(cleanUrl(filename))
           return encodeURIPath(
             toOutputFilePathInCss(
               filename,
@@ -715,7 +718,8 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
             .set(referenceId, { originalName: originalFilename })
 
           const filename = this.getFileName(referenceId)
-          chunk.viteMetadata!.importedAssets.add(cleanUrl(filename))
+          getChunkMetadata(chunk.name)!.importedAssets.add(cleanUrl(filename))
+          // chunk.viteMetadata!.importedAssets.add(cleanUrl(filename))
           const replacement = toOutputFilePathInJS(
             filename,
             'asset',
@@ -772,7 +776,9 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
             generatedAssets
               .get(config)!
               .set(referenceId, { originalName: originalFilename, isEntry })
-            chunk.viteMetadata!.importedCss.add(this.getFileName(referenceId))
+            getChunkMetadata(chunk.name)!.importedCss.add(
+              this.getFileName(referenceId),
+            )
           } else if (!config.build.ssr) {
             // legacy build and inline css
 
@@ -832,9 +838,9 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
     },
 
     augmentChunkHash(chunk) {
-      if (chunk.viteMetadata?.importedCss.size) {
+      if (getChunkMetadata(chunk.name)?.importedCss.size) {
         let hash = ''
-        for (const id of chunk.viteMetadata.importedCss) {
+        for (const id of getChunkMetadata(chunk.name)!.importedCss) {
           hash += id
         }
         return hash
@@ -925,14 +931,14 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
             // chunks instead.
             chunk.imports = chunk.imports.filter((file) => {
               if (pureCssChunkNames.includes(file)) {
-                const { importedCss, importedAssets } = (
-                  bundle[file] as OutputChunk
-                ).viteMetadata!
+                const { importedCss, importedAssets } = getChunkMetadata(
+                  (bundle[file] as OutputChunk).name,
+                )!
                 importedCss.forEach((file) =>
-                  chunk.viteMetadata!.importedCss.add(file),
+                  getChunkMetadata(chunk.name)!.importedCss.add(file),
                 )
                 importedAssets.forEach((file) =>
-                  chunk.viteMetadata!.importedAssets.add(file),
+                  getChunkMetadata(chunk.name)!.importedAssets.add(file),
                 )
                 chunkImportsPureCssChunk = true
                 return false
@@ -1522,8 +1528,9 @@ export async function formatPostcssSourceMap(
 ): Promise<ExistingRawSourceMap> {
   const inputFileDir = path.dirname(file)
 
-  const sources = rawMap.sources.map((source) => {
-    const cleanSource = cleanUrl(decodeURIComponent(source))
+  // Note: the real `Sourcemap#sources` maybe is `null`, but rollup typing is not handle it.
+  const sources = rawMap.sources!.map((source) => {
+    const cleanSource = cleanUrl(decodeURIComponent(source!))
 
     // postcss virtual files
     if (cleanSource[0] === '<' && cleanSource[cleanSource.length - 1] === '>') {
@@ -2828,12 +2835,14 @@ function formatStylusSourceMap(
   if (!mapBefore) return undefined
   const map = { ...mapBefore }
 
-  const resolveFromRoot = (p: string) => normalizePath(path.resolve(root, p))
+  const resolveFromRoot = (p: string | null) =>
+    normalizePath(path.resolve(root, p!))
 
   if (map.file) {
     map.file = resolveFromRoot(map.file)
   }
-  map.sources = map.sources.map(resolveFromRoot)
+  // Note: the real `Sourcemap#sources` maybe is `null`, but rollup typing is not handle it.
+  map.sources = map.sources!.map(resolveFromRoot)
 
   return map
 }

@@ -46,9 +46,13 @@ const identifierWithTrailingDollarRE = /\b(\w+)\$\d+\b/g
  * the module that imports the identifer as a named import alias
  */
 const identifierReplacements: Record<string, Record<string, string>> = {
-  rollup: {
-    Plugin$1: 'rollup.Plugin',
-    TransformResult$2: 'rollup.TransformResult',
+  // rollup: {
+  //   Plugin$1: 'rollup.Plugin',
+  //   TransformResult$2: 'rollup.TransformResult',
+  // },
+  rolldown: {
+    Plugin$1: 'rolldown.Plugin',
+    TransformResult$2: 'rolldown.TransformResult',
   },
   esbuild: {
     TransformResult$1: 'esbuild_TransformResult',

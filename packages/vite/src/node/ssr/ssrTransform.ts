@@ -1,6 +1,6 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
-import type { SourceMap } from 'rollup'
+import type { SourceMap } from 'rolldown'
 import type {
   ExportAllDeclaration,
   ExportDefaultDeclaration,
@@ -345,7 +345,7 @@ async function ssrTransformScript(
     },
   })
 
-  let map = s.generateMap({ hires: 'boundary' })
+  let map = s.generateMap({ hires: 'boundary' }) as SourceMap
   if (
     inMap &&
     inMap.mappings &&

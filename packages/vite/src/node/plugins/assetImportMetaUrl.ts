@@ -1,6 +1,7 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
 import { stripLiteral } from 'strip-literal'
+import { parseAst } from 'rollup/parseAst'
 import type { Plugin } from '../plugin'
 import type { ResolvedConfig } from '../config'
 import type { ResolveFn } from '../'
@@ -12,7 +13,6 @@ import { preloadHelperId } from './importAnalysisBuild'
 import type { InternalResolveOptions } from './resolve'
 import { tryFsResolve } from './resolve'
 import { hasViteIgnoreRE } from './importAnalysis'
-
 /**
  * Convert `new URL('./foo.png', import.meta.url)` to its resolved built URL
  *
@@ -71,7 +71,7 @@ export function assetImportMetaUrlPlugin(config: ResolvedConfig): Plugin {
             const queryString = hasQueryDelimiter
               ? rawUrl.slice(queryDelimiterIndex, -1)
               : ''
-            const ast = this.parse(pureUrl)
+            const ast = parseAst(pureUrl)
             const templateLiteral = (ast as any).body[0].expression
             if (templateLiteral.expressions.length) {
               const pattern = buildGlobPattern(templateLiteral)

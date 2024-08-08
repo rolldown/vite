@@ -17,7 +17,7 @@ import debug from 'debug'
 import type { Alias, AliasOptions } from 'dep-types/alias'
 import type MagicString from 'magic-string'
 
-import type { TransformResult } from 'rollup'
+import type { TransformResult } from 'rolldown'
 import { createFilter as _createFilter } from '@rollup/pluginutils'
 import { cleanUrl, isWindows, slash, withTrailingSlash } from '../shared/utils'
 import { VALID_ID_PREFIX } from '../shared/constants'

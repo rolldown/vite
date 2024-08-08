@@ -2,7 +2,7 @@ import path from 'node:path'
 import { gzip } from 'node:zlib'
 import { promisify } from 'node:util'
 import colors from 'picocolors'
-import type { Plugin } from 'rollup'
+import type { Plugin } from 'rolldown'
 import type { ResolvedConfig } from '../config'
 import { isDefined, isInNodeModules, normalizePath } from '../utils'
 import { LogLevels } from '../logger'
@@ -116,6 +116,8 @@ export function buildReporterPlugin(config: ResolvedConfig): Plugin {
     },
 
     renderChunk(code, chunk, options) {
+      // TODO @underfin
+      // @ts-expect-error
       if (!options.inlineDynamicImports) {
         for (const id of chunk.moduleIds) {
           const module = this.getModuleInfo(id)

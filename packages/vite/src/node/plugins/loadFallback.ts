@@ -12,11 +12,11 @@ export function loadFallbackPlugin(): Plugin {
       try {
         const cleanedId = cleanUrl(id)
         const content = await fsp.readFile(cleanedId, 'utf-8')
-        this.addWatchFile(cleanedId)
+        // this.addWatchFile(cleanedId)
         return content
       } catch (e) {
         const content = await fsp.readFile(id, 'utf-8')
-        this.addWatchFile(id)
+        // this.addWatchFile(id)
         return content
       }
     },
