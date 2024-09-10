@@ -494,6 +494,14 @@ export interface ExperimentalOptions {
    * @default false
    */
   skipSsrTransform?: boolean
+
+  /**
+   * Enable builtin plugin that written by rust, which is faster than js plugin.
+   *
+   * @experimental
+   * @default true
+   */
+  enableNativePlugin?: boolean
 }
 
 export interface LegacyOptions {
@@ -1243,6 +1251,7 @@ export async function resolveConfig(
     experimental: {
       importGlobRestoreExtension: false,
       hmrPartialAccept: false,
+      enableNativePlugin: false,
       ...config.experimental,
     },
     future: config.future,
