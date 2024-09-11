@@ -7,6 +7,7 @@ import type {
   Plugin as RollupPlugin,
   PluginContext as RollupPluginContext,
   TransformPluginContext as RollupTransformPluginContext,
+  SourceMap,
   TransformResult,
 } from 'rollup'
 import type {
@@ -58,6 +59,11 @@ export interface PluginContextExtension {
   environment: Environment
 }
 
+export interface TransformPluginContextExtension {
+  // TODO: rolldown does not support this yet: https://github.com/rolldown/rolldown/pull/1121, https://github.com/rolldown/rolldown/pull/1426
+  getCombinedSourcemap: () => SourceMap
+}
+
 export interface HotUpdatePluginContext {
   environment: DevEnvironment
 }
@@ -76,11 +82,14 @@ export interface ResolveIdPluginContext
 
 export interface TransformPluginContext
   extends RollupTransformPluginContext,
-    PluginContextExtension {}
+    PluginContextExtension,
+    TransformPluginContextExtension {}
 
 // Argument Rollup types to have the PluginContextExtension
 declare module 'rollup' {
   export interface MinimalPluginContext extends PluginContextExtension {}
+  export interface TransformPluginContext
+    extends TransformPluginContextExtension {}
 }
 
 /**

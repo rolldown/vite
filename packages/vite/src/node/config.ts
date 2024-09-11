@@ -812,6 +812,7 @@ function resolveDepOptimizationOptions(
       preserveSymlinks,
       ...optimizeDeps.esbuildOptions,
     },
+    rollupOptions: optimizeDeps.rollupOptions,
     disabled: optimizeDeps.disabled,
     entries: optimizeDeps.entries,
     force: optimizeDeps.force ?? false,
