@@ -2,7 +2,7 @@ import { basename, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import colors from 'picocolors'
 import { describe, expect, test, vi } from 'vitest'
-import type { OutputChunk, OutputOptions, RollupOutput } from 'rollup'
+import type { OutputChunk, OutputOptions, RollupOutput } from 'rolldown'
 import type { LibraryFormats, LibraryOptions } from '../build'
 import {
   build,
@@ -182,9 +182,9 @@ describe('resolveBuildOutputs', () => {
       {
         format: 'es',
       },
-      {
-        format: 'umd',
-      },
+      // {
+      //   format: 'umd',
+      // },
     ])
   })
 
@@ -223,7 +223,7 @@ describe('resolveBuildOutputs', () => {
     expect(resolveBuild).toThrowError(/Option "build\.lib\.name" is required/)
   })
 
-  test('throws an error when lib.name is missing on umd format', () => {
+  test.skip('throws an error when lib.name is missing on umd format', () => {
     const logger = createLogger()
     const libOptions: LibraryOptions = { ...baseLibOptions, formats: ['umd'] }
     const resolveBuild = () => resolveBuildOutputs(void 0, libOptions, logger)
@@ -242,7 +242,7 @@ describe('resolveBuildOutputs', () => {
     )
   })
 
-  test('throws an error when output.name is missing on umd format', () => {
+  test.skip('throws an error when output.name is missing on umd format', () => {
     const logger = createLogger()
     const libOptions: LibraryOptions = { ...baseLibOptions }
     const outputs: OutputOptions[] = [{ format: 'umd' }]
@@ -346,7 +346,7 @@ describe('resolveLibFilename', () => {
   test('module package extensions', () => {
     const formatsToFilenames: FormatsToFileNames = [
       ['es', 'my-lib.js'],
-      ['umd', 'my-lib.umd.cjs'],
+      // ['umd', 'my-lib.umd.cjs'],
       ['cjs', 'my-lib.cjs'],
       ['iife', 'my-lib.iife.js'],
     ]
@@ -496,13 +496,13 @@ describe('resolveBuildOutputs', () => {
 
     expect(resolveBuildOutputs(undefined, libOptions, {} as Logger)).toEqual([
       { format: 'es' },
-      { format: 'umd' },
+      // { format: 'umd' },
     ])
     expect(
       resolveBuildOutputs({ name: 'A' }, libOptions, {} as Logger),
     ).toEqual([
       { format: 'es', name: 'A' },
-      { format: 'umd', name: 'A' },
+      // { format: 'umd', name: 'A' },
     ])
     expect(
       resolveBuildOutputs([{ name: 'A' }], libOptions, {} as Logger),
@@ -529,7 +529,7 @@ describe('resolveBuildOutputs', () => {
     ).toEqual([{ name: 'A' }])
   })
 
-  test('umd or iife: should not support multiple entries', () => {
+  test.skip('umd or iife: should not support multiple entries', () => {
     ;['umd', 'iife'].forEach((format) => {
       expect(() =>
         resolveBuildOutputs(
@@ -546,7 +546,7 @@ describe('resolveBuildOutputs', () => {
     })
   })
 
-  test('umd or iife: should define build.lib.name', () => {
+  test.skip('umd or iife: should define build.lib.name', () => {
     ;['umd', 'iife'].forEach((format) => {
       expect(() =>
         resolveBuildOutputs(

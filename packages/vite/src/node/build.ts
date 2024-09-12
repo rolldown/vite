@@ -13,10 +13,9 @@ import type {
   RollupLog,
   RollupOptions,
   RollupOutput,
-  RollupWatcher,
-  WatcherOptions,
-} from 'rollup'
-import commonjsPlugin from '@rollup/plugin-commonjs'
+  // RollupWatcher,
+  // WatcherOptions,
+} from 'rolldown'
 import type { RollupCommonJSOptions } from 'dep-types/commonjs'
 import type { RollupDynamicImportVarsOptions } from 'dep-types/dynamicImportVars'
 import type { TransformOptions } from 'esbuild'
@@ -60,7 +59,7 @@ import { findNearestPackageData } from './packages'
 import type { PackageCache } from './packages'
 import {
   getResolvedOutDirs,
-  resolveChokidarOptions,
+  // resolveChokidarOptions,
   resolveEmptyOutDir,
 } from './watch'
 import { completeSystemWrapPlugin } from './plugins/completeSystemWrap'
@@ -261,7 +260,7 @@ export interface BuildEnvironmentOptions {
    * https://rollupjs.org/configuration-options/#watch
    * @default null
    */
-  watch?: WatcherOptions | null
+  // watch?: WatcherOptions | null
   /**
    * create the Build Environment instance
    */
@@ -296,7 +295,7 @@ export interface LibraryOptions {
   fileName?: string | ((format: ModuleFormat, entryName: string) => string)
 }
 
-export type LibraryFormats = 'es' | 'cjs' | 'umd' | 'iife' | 'system'
+export type LibraryFormats = 'es' | 'cjs' | 'iife' // | 'umd' | 'system'
 
 export interface ModulePreloadOptions {
   /**
@@ -381,7 +380,7 @@ export function resolveBuildEnvironmentOptions(
     emitAssets: consumer === 'client',
     reportCompressedSize: true,
     chunkSizeWarningLimit: 500,
-    watch: null,
+    // watch: null,
     createEnvironment: (name, config) => new BuildEnvironment(name, config),
   }
 
@@ -458,20 +457,10 @@ export async function resolveBuildPlugins(config: ResolvedConfig): Promise<{
   pre: Plugin[]
   post: Plugin[]
 }> {
-  const { commonjsOptions } = config.build
-  const usePluginCommonjs =
-    !Array.isArray(commonjsOptions.include) ||
-    commonjsOptions.include.length !== 0
+  // TODO: support commonjs options?
   return {
     pre: [
       completeSystemWrapPlugin(),
-      /**
-       * environment.config.build.commonjsOptions isn't currently supported
-       * when builder.sharedConfigBuild or builder.sharedPlugins enabled.
-       * To do it, we could inject one commonjs plugin per environment with
-       * an applyToEnvironment hook.
-       */
-      ...(usePluginCommonjs ? [commonjsPlugin(commonjsOptions)] : []),
       dataURIPlugin(),
       /**
        * environment.config.build.rollupOptions.plugins isn't supported
@@ -506,7 +495,7 @@ export async function resolveBuildPlugins(config: ResolvedConfig): Promise<{
  */
 export async function build(
   inlineConfig: InlineConfig = {},
-): Promise<RollupOutput | RollupOutput[] | RollupWatcher> {
+): Promise<RollupOutput | RollupOutput[] /* | RollupWatcher */> {
   const patchConfig = (resolved: ResolvedConfig) => {
     // Until the ecosystem updates to use `environment.config.build` instead of `config.build`,
     // we need to make override `config.build` for the current environment.
@@ -526,7 +515,7 @@ export async function build(
  */
 export async function buildWithResolvedConfig(
   config: ResolvedConfig,
-): Promise<RollupOutput | RollupOutput[] | RollupWatcher> {
+): Promise<RollupOutput | RollupOutput[] /* | RollupWatcher */> {
   const environmentName = config.build.ssr ? 'ssr' : 'client'
   const environment = await config.environments[
     environmentName
@@ -556,7 +545,7 @@ export function resolveConfigToBuild(
  **/
 export async function buildEnvironment(
   environment: BuildEnvironment,
-): Promise<RollupOutput | RollupOutput[] | RollupWatcher> {
+): Promise<RollupOutput | RollupOutput[] /* | RollupWatcher */> {
   const { root, packageCache } = environment.config
   const options = environment.config.build
   const libOptions = options.lib
@@ -616,12 +605,12 @@ export async function buildEnvironment(
   )
 
   const rollupOptions: RollupOptions = {
-    preserveEntrySignatures: ssr
-      ? 'allow-extension'
-      : libOptions
-        ? 'strict'
-        : false,
-    cache: options.watch ? undefined : false,
+    // preserveEntrySignatures: ssr
+    //   ? 'allow-extension'
+    //   : libOptions
+    //     ? 'strict'
+    //     : false,
+    // cache: options.watch ? undefined : false,
     ...options.rollupOptions,
     output: options.rollupOptions.output,
     input,
@@ -686,11 +675,11 @@ export async function buildEnvironment(
     }
   }
 
-  const outputBuildError = (e: RollupError) => {
-    enhanceRollupError(e)
-    clearLine()
-    logger.error(e.message, { error: e })
-  }
+  // const outputBuildError = (e: RollupError) => {
+  //   enhanceRollupError(e)
+  //   clearLine()
+  //   logger.error(e.message, { error: e })
+  // }
 
   let bundle: RollupBuild | undefined
   let startTime: number | undefined
@@ -704,12 +693,13 @@ export async function buildEnvironment(
             `Please use "rollupOptions.output" instead.`,
         )
       }
-      if (output.file) {
-        throw new Error(
-          `Vite does not support "rollupOptions.output.file". ` +
-            `Please use "rollupOptions.output.dir" and "rollupOptions.output.entryFileNames" instead.`,
-        )
-      }
+      // TODO: https://github.com/rolldown/rolldown/issues/624, https://github.com/rolldown/rolldown/issues/1270
+      // if (output.file) {
+      //   throw new Error(
+      //     `Vite does not support "rollupOptions.output.file". ` +
+      //       `Please use "rollupOptions.output.dir" and "rollupOptions.output.entryFileNames" instead.`,
+      //   )
+      // }
       if (output.sourcemap) {
         logger.warnOnce(
           colors.yellow(
@@ -734,11 +724,11 @@ export async function buildEnvironment(
         exports: 'auto',
         sourcemap: options.sourcemap,
         name: libOptions ? libOptions.name : undefined,
-        hoistTransitiveImports: libOptions ? false : undefined,
+        // hoistTransitiveImports: libOptions ? false : undefined,
         // es2015 enables `generatedCode.symbols`
         // - #764 add `Symbol.toStringTag` when build es module into cjs chunk
         // - #1048 add `Symbol.toStringTag` for module default export
-        generatedCode: 'es2015',
+        // generatedCode: 'es2015',
         entryFileNames: ssr
           ? `[name].${jsExt}`
           : libOptions
@@ -759,7 +749,7 @@ export async function buildEnvironment(
           ? `[name].[ext]`
           : path.posix.join(options.assetsDir, `[name]-[hash].[ext]`),
         inlineDynamicImports:
-          output.format === 'umd' ||
+          // output.format === 'umd' ||
           output.format === 'iife' ||
           (environment.config.consumer === 'server' &&
             environment.config.webCompatible &&
@@ -797,47 +787,47 @@ export async function buildEnvironment(
     )
 
     // watch file changes with rollup
-    if (options.watch) {
-      logger.info(colors.cyan(`\nwatching for file changes...`))
+    // if (options.watch) {
+    //   logger.info(colors.cyan(`\nwatching for file changes...`))
 
-      const resolvedChokidarOptions = resolveChokidarOptions(
-        options.watch.chokidar,
-        resolvedOutDirs,
-        emptyOutDir,
-        environment.config.cacheDir,
-      )
+    //   const resolvedChokidarOptions = resolveChokidarOptions(
+    //     options.watch.chokidar,
+    //     resolvedOutDirs,
+    //     emptyOutDir,
+    //     environment.config.cacheDir,
+    //   )
 
-      const { watch } = await import('rollup')
-      const watcher = watch({
-        ...rollupOptions,
-        output: normalizedOutputs,
-        watch: {
-          ...options.watch,
-          chokidar: resolvedChokidarOptions,
-        },
-      })
+    //   const { watch } = await import('rolldown')
+    //   const watcher = watch({
+    //     ...rollupOptions,
+    //     output: normalizedOutputs,
+    //     watch: {
+    //       ...options.watch,
+    //       chokidar: resolvedChokidarOptions,
+    //     },
+    //   })
 
-      watcher.on('event', (event) => {
-        if (event.code === 'BUNDLE_START') {
-          logger.info(colors.cyan(`\nbuild started...`))
-          if (options.write) {
-            prepareOutDir(resolvedOutDirs, emptyOutDir, environment)
-          }
-        } else if (event.code === 'BUNDLE_END') {
-          event.result.close()
-          logger.info(colors.cyan(`built in ${event.duration}ms.`))
-        } else if (event.code === 'ERROR') {
-          outputBuildError(event.error)
-        }
-      })
+    //   watcher.on('event', (event) => {
+    //     if (event.code === 'BUNDLE_START') {
+    //       logger.info(colors.cyan(`\nbuild started...`))
+    //       if (options.write) {
+    //         prepareOutDir(resolvedOutDirs, emptyOutDir, environment)
+    //       }
+    //     } else if (event.code === 'BUNDLE_END') {
+    //       event.result.close()
+    //       logger.info(colors.cyan(`built in ${event.duration}ms.`))
+    //     } else if (event.code === 'ERROR') {
+    //       outputBuildError(event.error)
+    //     }
+    //   })
 
-      return watcher
-    }
+    //   return watcher
+    // }
 
     // write or generate files with rollup
-    const { rollup } = await import('rollup')
+    const { rolldown } = await import('rolldown')
     startTime = Date.now()
-    bundle = await rollup(rollupOptions)
+    bundle = await rolldown(rollupOptions)
 
     if (options.write) {
       prepareOutDir(resolvedOutDirs, emptyOutDir, environment)
@@ -925,7 +915,7 @@ function resolveOutputJsExtension(
   type: string = 'commonjs',
 ): JsExt {
   if (type === 'module') {
-    return format === 'cjs' || format === 'umd' ? 'cjs' : 'js'
+    return format === 'cjs' /* || format === 'umd' */ ? 'cjs' : 'js'
   } else {
     return format === 'es' ? 'mjs' : 'js'
   }
@@ -975,10 +965,10 @@ export function resolveBuildOutputs(
       Object.values(libOptions.entry).length > 1
     const libFormats =
       libOptions.formats ||
-      (libHasMultipleEntries ? ['es', 'cjs'] : ['es', 'umd'])
+      (libHasMultipleEntries ? ['es', 'cjs'] : ['es' /* , 'umd' */])
 
     if (!Array.isArray(outputs)) {
-      if (libFormats.includes('umd') || libFormats.includes('iife')) {
+      if (/* libFormats.includes('umd') || */ libFormats.includes('iife')) {
         if (libHasMultipleEntries) {
           throw new Error(
             'Multiple entry points are not supported when output formats include "umd" or "iife".',
@@ -1006,7 +996,7 @@ export function resolveBuildOutputs(
 
     outputs.forEach((output) => {
       if (
-        (output.format === 'umd' || output.format === 'iife') &&
+        /* output.format === 'umd' || */ output.format === 'iife' &&
         !output.name
       ) {
         throw new Error(
@@ -1310,12 +1300,12 @@ const relativeUrlMechanisms: Record<
   InternalModuleFormat,
   (relativePath: string) => string
 > = {
-  amd: (relativePath) => {
-    if (relativePath[0] !== '.') relativePath = './' + relativePath
-    return getResolveUrl(
-      `require.toUrl('${escapeId(relativePath)}'), document.baseURI`,
-    )
-  },
+  // amd: (relativePath) => {
+  //   if (relativePath[0] !== '.') relativePath = './' + relativePath
+  //   return getResolveUrl(
+  //     `require.toUrl('${escapeId(relativePath)}'), document.baseURI`,
+  //   )
+  // },
   cjs: (relativePath) =>
     `(typeof document === 'undefined' ? ${getFileUrlFromRelativePath(
       relativePath,
@@ -1326,14 +1316,14 @@ const relativeUrlMechanisms: Record<
     ),
   iife: (relativePath) => getRelativeUrlFromDocument(relativePath),
   // NOTE: make sure rollup generate `module` params
-  system: (relativePath) =>
-    getResolveUrl(
-      `'${escapeId(partialEncodeURIPath(relativePath))}', module.meta.url`,
-    ),
-  umd: (relativePath) =>
-    `(typeof document === 'undefined' && typeof location === 'undefined' ? ${getFileUrlFromRelativePath(
-      relativePath,
-    )} : ${getRelativeUrlFromDocument(relativePath, true)})`,
+  // system: (relativePath) =>
+  //   getResolveUrl(
+  //     `'${escapeId(partialEncodeURIPath(relativePath))}', module.meta.url`,
+  //   ),
+  // umd: (relativePath) =>
+  //   `(typeof document === 'undefined' && typeof location === 'undefined' ? ${getFileUrlFromRelativePath(
+  //     relativePath,
+  //   )} : ${getRelativeUrlFromDocument(relativePath, true)})`,
 }
 /* end of copy */
 
@@ -1494,7 +1484,7 @@ export interface ViteBuilder {
   buildApp(): Promise<void>
   build(
     environment: BuildEnvironment,
-  ): Promise<RollupOutput | RollupOutput[] | RollupWatcher>
+  ): Promise<RollupOutput | RollupOutput[] /* | RollupWatcher */>
 }
 
 export interface BuilderOptions {

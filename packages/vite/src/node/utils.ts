@@ -17,7 +17,7 @@ import debug from 'debug'
 import type { Alias, AliasOptions } from 'dep-types/alias'
 import type MagicString from 'magic-string'
 
-import type { TransformResult } from 'rollup'
+import type { TransformResult } from 'rolldown'
 import { createFilter as _createFilter } from '@rollup/pluginutils'
 import { cleanUrl, isWindows, slash, withTrailingSlash } from '../shared/utils'
 import { VALID_ID_PREFIX } from '../shared/constants'
@@ -145,7 +145,10 @@ export function resolveDependencyVersion(
   return JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).version
 }
 
-export const rollupVersion = resolveDependencyVersion('rollup')
+export const rollupVersion = resolveDependencyVersion(
+  'rolldown',
+  '../../../package.json',
+)
 
 // set in bin/vite.js
 const filter = process.env.VITE_DEBUG_FILTER

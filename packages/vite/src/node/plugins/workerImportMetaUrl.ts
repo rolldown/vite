@@ -1,6 +1,6 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
-import type { RollupError } from 'rollup'
+import type { RollupError } from 'rolldown'
 import { stripLiteral } from 'strip-literal'
 import type { ResolvedConfig } from '../config'
 import type { Plugin } from '../plugin'
@@ -120,11 +120,11 @@ export function workerImportMetaUrlPlugin(config: ResolvedConfig): Plugin {
   return {
     name: 'vite:worker-import-meta-url',
 
-    shouldTransformCachedModule({ code }) {
-      if (isBuild && config.build.watch && isIncludeWorkerImportMetaUrl(code)) {
-        return true
-      }
-    },
+    // shouldTransformCachedModule({ code }) {
+    //   if (isBuild && config.build.watch && isIncludeWorkerImportMetaUrl(code)) {
+    //     return true
+    //   }
+    // },
 
     async transform(code, id) {
       if (

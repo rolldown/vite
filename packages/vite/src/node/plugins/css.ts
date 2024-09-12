@@ -13,7 +13,7 @@ import type {
   RenderedChunk,
   RollupError,
   SourceMapInput,
-} from 'rollup'
+} from 'rolldown'
 import { dataToEsm } from '@rollup/pluginutils'
 import colors from 'picocolors'
 import MagicString from 'magic-string'
@@ -87,6 +87,7 @@ import {
 } from './asset'
 import type { ESBuildOptions } from './esbuild'
 import { getChunkOriginalFileName } from './manifest'
+import { getChunkMetadata } from './metadata'
 
 const decoder = new TextDecoder()
 // const debug = createDebugger('vite:css')
@@ -614,7 +615,7 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
         // replace asset url references with resolved url.
         chunkCSS = chunkCSS.replace(assetUrlRE, (_, fileHash, postfix = '') => {
           const filename = this.getFileName(fileHash) + postfix
-          chunk.viteMetadata!.importedAssets.add(cleanUrl(filename))
+          getChunkMetadata(chunk)!.importedAssets.add(cleanUrl(filename))
           return encodeURIPath(
             toOutputFilePathInCss(
               filename,
@@ -726,7 +727,7 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
           generatedAssets.set(referenceId, { originalFileName })
 
           const filename = this.getFileName(referenceId)
-          chunk.viteMetadata!.importedAssets.add(cleanUrl(filename))
+          getChunkMetadata(chunk)!.importedAssets.add(cleanUrl(filename))
           const replacement = toOutputFilePathInJS(
             this.environment,
             filename,
@@ -782,7 +783,9 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
               source: chunkCSS,
             })
             generatedAssets.set(referenceId, { originalFileName, isEntry })
-            chunk.viteMetadata!.importedCss.add(this.getFileName(referenceId))
+            getChunkMetadata(chunk)!.importedCss.add(
+              this.getFileName(referenceId),
+            )
           } else if (this.environment.config.consumer === 'client') {
             // legacy build and inline css
 
@@ -837,9 +840,9 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
     },
 
     augmentChunkHash(chunk) {
-      if (chunk.viteMetadata?.importedCss.size) {
+      if (getChunkMetadata(chunk)?.importedCss.size) {
         let hash = ''
-        for (const id of chunk.viteMetadata.importedCss) {
+        for (const id of getChunkMetadata(chunk)!.importedCss) {
           hash += id
         }
         return hash
@@ -930,14 +933,14 @@ export function cssPostPlugin(config: ResolvedConfig): Plugin {
             // chunks instead.
             chunk.imports = chunk.imports.filter((file) => {
               if (pureCssChunkNames.includes(file)) {
-                const { importedCss, importedAssets } = (
-                  bundle[file] as OutputChunk
-                ).viteMetadata!
+                const { importedCss, importedAssets } = getChunkMetadata(
+                  bundle[file] as OutputChunk,
+                )!
                 importedCss.forEach((file) =>
-                  chunk.viteMetadata!.importedCss.add(file),
+                  getChunkMetadata(chunk)!.importedCss.add(file),
                 )
                 importedAssets.forEach((file) =>
-                  chunk.viteMetadata!.importedAssets.add(file),
+                  getChunkMetadata(chunk)!.importedAssets.add(file),
                 )
                 chunkImportsPureCssChunk = true
                 return false
@@ -1541,8 +1544,9 @@ export async function formatPostcssSourceMap(
 ): Promise<ExistingRawSourceMap> {
   const inputFileDir = path.dirname(file)
 
-  const sources = rawMap.sources.map((source) => {
-    const cleanSource = cleanUrl(decodeURIComponent(source))
+  // Note: the real `Sourcemap#sources` maybe is `null`, but rollup typing is not handle it.
+  const sources = rawMap.sources!.map((source) => {
+    const cleanSource = cleanUrl(decodeURIComponent(source!))
 
     // postcss virtual files
     if (cleanSource[0] === '<' && cleanSource[cleanSource.length - 1] === '>') {
@@ -2497,8 +2501,11 @@ const scssProcessor = (
           : undefined
 
         if (map) {
-          map.sources = map.sources.map((url) =>
-            url.startsWith('file://') ? normalizePath(fileURLToPath(url)) : url,
+          // Note: the real `Sourcemap#sources` maybe is `null`, but rollup typing is not handle it.
+          map.sources = map.sources!.map((url) =>
+            url!.startsWith('file://')
+              ? normalizePath(fileURLToPath(url!))
+              : url,
           )
         }
 
@@ -2908,12 +2915,14 @@ function formatStylusSourceMap(
   if (!mapBefore) return undefined
   const map = { ...mapBefore }
 
-  const resolveFromRoot = (p: string) => normalizePath(path.resolve(root, p))
+  const resolveFromRoot = (p: string | null) =>
+    normalizePath(path.resolve(root, p!))
 
   if (map.file) {
     map.file = resolveFromRoot(map.file)
   }
-  map.sources = map.sources.map(resolveFromRoot)
+  // Note: the real `Sourcemap#sources` maybe is `null`, but rollup typing is not handle it.
+  map.sources = map.sources!.map(resolveFromRoot)
 
   return map
 }

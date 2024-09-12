@@ -3,7 +3,7 @@ import { parse as parseUrl } from 'node:url'
 import fsp from 'node:fs/promises'
 import { Buffer } from 'node:buffer'
 import * as mrmime from 'mrmime'
-import type { NormalizedOutputOptions, RenderedChunk } from 'rollup'
+import type { NormalizedOutputOptions, RenderedChunk } from 'rolldown'
 import MagicString from 'magic-string'
 import colors from 'picocolors'
 import {
@@ -27,6 +27,7 @@ import {
 import { DEFAULT_ASSETS_INLINE_LIMIT, FS_PREFIX } from '../constants'
 import { cleanUrl, withTrailingSlash } from '../../shared/utils'
 import type { Environment } from '../environment'
+import { getChunkMetadata } from './metadata'
 
 // referenceId is base64url but replaces - with $
 export const assetUrlRE = /__VITE_ASSET__([\w$]+)__(?:\$_(.*?)__)?/g
@@ -85,7 +86,7 @@ export function renderAssetUrlInJS(
     s ||= new MagicString(code)
     const [full, referenceId, postfix = ''] = match
     const file = pluginContext.getFileName(referenceId)
-    chunk.viteMetadata!.importedAssets.add(cleanUrl(file))
+    getChunkMetadata(chunk)!.importedAssets.add(cleanUrl(file))
     const filename = file + postfix
     const replacement = toOutputFilePathInJS(
       environment,
@@ -136,6 +137,8 @@ export function renderAssetUrlInJS(
 export function assetPlugin(config: ResolvedConfig): Plugin {
   registerCustomMime()
 
+  const assetModuleId = new Set<string>()
+
   return {
     name: 'vite:asset',
 
@@ -170,9 +173,12 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
         const file = checkPublicFile(id, config) || cleanUrl(id)
         this.addWatchFile(file)
         // raw query, read file and return as string
-        return `export default ${JSON.stringify(
-          await fsp.readFile(file, 'utf-8'),
-        )}`
+        return {
+          code: `export default ${JSON.stringify(
+            await fsp.readFile(file, 'utf-8'),
+          )}`,
+          moduleType: 'js', // TODO: remove later when not needed
+        }
       }
 
       if (!urlRE.test(id) && !config.assetsInclude(cleanUrl(id))) {
@@ -190,6 +196,10 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
         url = injectQuery(url, `t=${mod.lastHMRTimestamp}`)
       }
 
+      // Note: rolldown does not support meta, use a Set instead of it for now
+      if (config.command === 'build') {
+        assetModuleId.add(id)
+      }
       return {
         code: `export default ${JSON.stringify(encodeURIPath(url))}`,
         // Force rollup to keep this module from being shared between other entry points if it's an entrypoint.
@@ -199,6 +209,7 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
             ? 'no-treeshake'
             : false,
         meta: config.command === 'build' ? { 'vite:asset': true } : undefined,
+        moduleType: 'js', // TODO: remove later when not needed
       }
     },
 
@@ -226,7 +237,8 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
           chunk.isEntry &&
           chunk.moduleIds.length === 1 &&
           config.assetsInclude(chunk.moduleIds[0]) &&
-          this.getModuleInfo(chunk.moduleIds[0])?.meta['vite:asset']
+          assetModuleId.has(chunk.moduleIds[0])
+          // this.getModuleInfo(chunk.moduleIds[0])?.meta['vite:asset']
         ) {
           delete bundle[file]
         }

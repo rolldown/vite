@@ -12,7 +12,7 @@ import { parseAst } from 'rollup/parseAst'
 import type { StaticImport } from 'mlly'
 import { ESM_STATIC_IMPORT_RE, parseStaticImport } from 'mlly'
 import { makeLegalIdentifier } from '@rollup/pluginutils'
-import type { PartialResolvedId } from 'rollup'
+import type { PartialResolvedId } from 'rolldown'
 import {
   CLIENT_DIR,
   CLIENT_PUBLIC_PATH,
@@ -350,6 +350,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
 
         const resolved = await this.resolve(url, importerFile)
 
+        // TODO: resolved.meta is not supported
         if (!resolved || resolved.meta?.['vite:alias']?.noResolved) {
           // in ssr, we should let node handle the missing modules
           if (ssr) {

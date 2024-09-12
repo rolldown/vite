@@ -5,9 +5,8 @@ import { performance } from 'node:perf_hooks'
 import glob from 'fast-glob'
 import type { Loader } from 'esbuild'
 import { transform } from 'esbuild'
-import type { PartialResolvedId } from 'rollup'
+import type { PartialResolvedId, Plugin } from 'rolldown'
 import colors from 'picocolors'
-import type { Plugin } from 'rolldown'
 import { scan } from 'rolldown/experimental'
 import {
   CSS_LANGS_RE,

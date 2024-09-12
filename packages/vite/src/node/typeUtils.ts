@@ -2,7 +2,7 @@ import type {
   ObjectHook,
   MinimalPluginContext as RollupMinimalPluginContext,
   Plugin as RollupPlugin,
-} from 'rollup'
+} from 'rolldown'
 
 export type NonNeverKeys<T> = {
   [K in keyof T]: T[K] extends never ? never : K
