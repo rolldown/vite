@@ -13,23 +13,25 @@ export default defineConfig({
   },
   test: {
     include: ['./playground/**/*.spec.[tj]s'],
-    exclude: isBuild
-      ? [
-          './playground/backend-integration/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2207
-          './playground/css-codesplit/**/*.spec.[tj]s', // manualChunks
-          './playground/css-dynamic-import/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/1842
-          './playground/dynamic-import/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/1842, https://github.com/rolldown/rolldown/issues/1843
-          './playground/external/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2041
-          './playground/glob-import/**/*.spec.[tj]s', // remove empty CSS generate chunk https://github.com/rolldown/rolldown/issues/1842
-          './playground/js-sourcemap/**/*.spec.[tj]s', // manualChunks
-          './playground/legacy/**/*.spec.[tj]s', // system format
-          './playground/lib/**/*.spec.[tj]s', // umd format
-          './playground/object-hooks/**/*.spec.[tj]s', // object hook sequential
-          './playground/optimize-deps/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2031
-          './playground/worker/__tests__/es/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2208
-          ...defaultExclude,
-        ]
-      : defaultExclude,
+    exclude: [
+      './playground/legacy/**/*.spec.[tj]s', // system format
+      ...(isBuild
+        ? [
+            './playground/backend-integration/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2207
+            './playground/css-codesplit/**/*.spec.[tj]s', // manualChunks
+            './playground/css-dynamic-import/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/1842
+            './playground/dynamic-import/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/1842, https://github.com/rolldown/rolldown/issues/1843
+            './playground/external/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2041
+            './playground/glob-import/**/*.spec.[tj]s', // remove empty CSS generate chunk https://github.com/rolldown/rolldown/issues/1842
+            './playground/js-sourcemap/**/*.spec.[tj]s', // manualChunks
+            './playground/lib/**/*.spec.[tj]s', // umd format
+            './playground/object-hooks/**/*.spec.[tj]s', // object hook sequential
+            './playground/optimize-deps/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2031
+            './playground/worker/__tests__/es/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2208
+          ]
+        : []),
+      ...defaultExclude,
+    ],
     setupFiles: ['./playground/vitestSetup.ts'],
     globalSetup: ['./playground/vitestGlobalSetup.ts'],
     testTimeout: timeout,
