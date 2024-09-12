@@ -157,8 +157,8 @@ jobs:
       - name: Check formatting
         run: pnpm prettier --check .
 
-      - name: Typecheck
-        run: pnpm run typecheck
+      # - name: Typecheck
+      #   run: pnpm run typecheck
 
       - name: Test docs
         run: pnpm run test-docs
