@@ -486,7 +486,9 @@ export async function resolveBuildPlugins(config: ResolvedConfig): Promise<{
     ],
     post: [
       ...buildImportAnalysisPlugin(config),
-      ...(config.esbuild !== false ? [buildEsbuildPlugin(config)] : []),
+      ...(config.esbuild !== false && !enableNativePlugin
+        ? [buildEsbuildPlugin(config)]
+        : []),
       terserPlugin(config),
       ...(!config.isWorker
         ? [
