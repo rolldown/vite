@@ -72,7 +72,7 @@ export let resolvedConfig: ResolvedConfig = undefined!
 export let page: Page = undefined!
 export let browser: Browser = undefined!
 export let viteTestUrl: string = ''
-export let watcher: RollupWatcher | undefined = undefined
+export const watcher: RollupWatcher | undefined = undefined
 
 export function setViteUrl(url: string): void {
   viteTestUrl = url
@@ -273,13 +273,13 @@ export async function startDefaultServe(): Promise<void> {
       const builder = await createBuilder(buildConfig)
       await builder.buildApp()
     } else {
-      const rollupOutput = await build(buildConfig)
-      const isWatch = !!resolvedConfig!.build.watch
-      // in build watch,call startStaticServer after the build is complete
-      if (isWatch) {
-        watcher = rollupOutput as RollupWatcher
-        await notifyRebuildComplete(watcher)
-      }
+      /* const rollupOutput = */ await build(buildConfig)
+      // const isWatch = !!resolvedConfig!.build.watch
+      // // in build watch,call startStaticServer after the build is complete
+      // if (isWatch) {
+      //   watcher = rollupOutput as RollupWatcher
+      //   await notifyRebuildComplete(watcher)
+      // }
       if (buildConfig.__test__) {
         buildConfig.__test__()
       }

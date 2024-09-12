@@ -4,10 +4,9 @@ import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import type { Loader } from 'esbuild'
 import { transform } from 'esbuild'
-import type { PartialResolvedId } from 'rollup'
+import type { PartialResolvedId, Plugin } from 'rolldown'
 import colors from 'picocolors'
 import { glob, isDynamicPattern } from 'tinyglobby'
-import type { Plugin } from 'rolldown'
 import { scan } from 'rolldown/experimental'
 import {
   CSS_LANGS_RE,
