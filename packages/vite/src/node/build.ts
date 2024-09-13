@@ -1137,7 +1137,11 @@ export function injectEnvironmentToHooks(
 ): Plugin {
   const { resolveId, load, transform } = plugin
 
-  const clone = { ...plugin }
+  // the plugin can be a class instance (e.g. native plugins)
+  const clone: Plugin = Object.assign(
+    Object.create(Object.getPrototypeOf(plugin)),
+    plugin,
+  )
 
   for (const hook of Object.keys(clone) as RollupPluginHooks[]) {
     switch (hook) {
