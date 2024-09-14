@@ -82,19 +82,21 @@ export async function resolvePlugins(
           })
         : modulePreloadPolyfillPlugin(config)
       : null,
-    resolvePlugin(
-      {
-        root: config.root,
-        isProduction: config.isProduction,
-        isBuild,
-        packageCache: config.packageCache,
-        asSrc: true,
-        fsUtils: getFsUtils(config),
-        optimizeDeps: true,
-        externalize: isBuild && !!config.build.ssr, // TODO: should we do this for all environments?
-      },
-      config.environments,
-    ),
+    enableNativePlugin
+      ? null
+      : resolvePlugin(
+          {
+            root: config.root,
+            isProduction: config.isProduction,
+            isBuild,
+            packageCache: config.packageCache,
+            asSrc: true,
+            fsUtils: getFsUtils(config),
+            optimizeDeps: true,
+            externalize: isBuild && !!config.build.ssr, // TODO: should we do this for all environments?
+          },
+          config.environments,
+        ),
     htmlInlineProxyPlugin(config),
     cssPlugin(config),
     config.esbuild !== false
