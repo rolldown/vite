@@ -96,6 +96,7 @@ const nodeConfig = defineConfig({
   },
   external: [
     /^vite\//,
+    /^rolldown-vite\//,
     'fsevents',
     'lightningcss',
     'rollup/parseAst',

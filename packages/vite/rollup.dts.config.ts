@@ -16,6 +16,7 @@ const pkg = JSON.parse(
 const external = [
   /^node:*/,
   /^vite\//,
+  /^rolldown-vite\//,
   'rollup/parseAst',
   ...Object.keys(pkg.dependencies),
   // lightningcss types are bundled
@@ -138,6 +139,7 @@ function validateChunkImports(this: PluginContext, chunk: RenderedChunk) {
       !id.startsWith('node:') &&
       !id.startsWith('types.d') &&
       !id.startsWith('vite/') &&
+      !id.startsWith('rolldown-vite/') &&
       !deps.includes(id) &&
       !deps.some((name) => id.startsWith(name + '/'))
     ) {

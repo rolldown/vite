@@ -22,7 +22,7 @@ export default defineConfig({
   publicDir: false,
   resolve: {
     alias: {
-      'vite/runtime': path.resolve(
+      'rolldown-vite/runtime': path.resolve(
         _dirname,
         './packages/vite/src/runtime/index.ts',
       ),

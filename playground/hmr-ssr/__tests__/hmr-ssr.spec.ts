@@ -5,7 +5,7 @@ import EventEmitter from 'node:events'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 import type { InlineConfig, Logger, ViteDevServer } from 'vite'
 import { createServer, createViteRuntime } from 'vite'
-import type { ViteRuntime } from 'vite/runtime'
+import type { ViteRuntime } from 'rolldown-vite/runtime'
 import type { RollupError } from 'rollup'
 import {
   addFile,

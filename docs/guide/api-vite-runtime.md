@@ -62,7 +62,7 @@ The two main methods that runtime exposes are `executeUrl` and `executeEntrypoin
 **Example Usage:**
 
 ```js
-import { ViteRuntime, ESModulesRunner } from 'vite/runtime'
+import { ViteRuntime, ESModulesRunner } from 'rolldown-vite/runtime'
 import { root, fetchModule } from './rpc-implementation.js'
 
 const runtime = new ViteRuntime(
