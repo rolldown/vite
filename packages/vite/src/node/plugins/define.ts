@@ -1,7 +1,7 @@
 import { transform } from 'esbuild'
 import { TraceMap, decodedMap, encodedMap } from '@jridgewell/trace-mapping'
+import type { RolldownPlugin } from 'rolldown'
 import type { ResolvedConfig } from '../config'
-import type { Plugin } from '../plugin'
 import { escapeRegex } from '../utils'
 import type { Environment } from '../environment'
 import { isCSSRequest } from './css'
@@ -12,7 +12,7 @@ const isNonJsRequest = (request: string): boolean => nonJsRe.test(request)
 const importMetaEnvMarker = '__vite_import_meta_env__'
 const importMetaEnvKeyReCache = new Map<string, RegExp>()
 
-export function definePlugin(config: ResolvedConfig): Plugin {
+export function definePlugin(config: ResolvedConfig): RolldownPlugin {
   const isBuild = config.command === 'build'
   const isBuildLib = isBuild && config.build.lib
 
@@ -111,7 +111,7 @@ export function definePlugin(config: ResolvedConfig): Plugin {
     return pattern
   }
 
-  return {
+  const plugin: RolldownPlugin = {
     name: 'vite:define',
 
     async transform(code, id) {
@@ -179,6 +179,16 @@ export function definePlugin(config: ResolvedConfig): Plugin {
       return result
     },
   }
+  const enableNativePlugin = config.experimental.enableNativePlugin
+  if (enableNativePlugin) {
+    delete plugin.transform
+    plugin.options = function (option) {
+      const [define, _pattern, importMetaEnvVal] = getPattern(this.environment)
+      define['import.meta.env'] = importMetaEnvVal
+      option.define = define
+    }
+  }
+  return plugin
 }
 
 export async function replaceDefine(
