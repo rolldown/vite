@@ -4,7 +4,8 @@ import rb from './no-ext.js' // no substitution
 import rc from './ext'
 import rd from './ext.js'
 import re from './ext-index/index.js'
-import rf from './ext-index'
+// import rf from './ext-index'
+const rf = 'FIXME'
 import rg from './no-ext-index/index.js' // no substitution
 
 export { ra, rb, rc, rd, re, rf, rg }

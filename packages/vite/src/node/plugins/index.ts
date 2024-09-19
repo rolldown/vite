@@ -16,7 +16,7 @@ import type { HookHandler, Plugin, PluginWithRequiredHook } from '../plugin'
 import { watchPackageDataPlugin } from '../packages'
 import { getFsUtils } from '../fsUtils'
 import { jsonPlugin } from './json'
-import { resolvePlugin } from './resolve'
+import { filteredResolvePlugin, resolvePlugin } from './resolve'
 import { optimizedDepsPlugin } from './optimizedDeps'
 import { esbuildPlugin } from './esbuild'
 import { importAnalysisPlugin } from './importAnalysis'
@@ -83,7 +83,19 @@ export async function resolvePlugins(
         : modulePreloadPolyfillPlugin(config)
       : null,
     enableNativePlugin
-      ? null
+      ? filteredResolvePlugin(
+          {
+            root: config.root,
+            isProduction: config.isProduction,
+            isBuild,
+            packageCache: config.packageCache,
+            asSrc: true,
+            fsUtils: getFsUtils(config),
+            optimizeDeps: true,
+            externalize: isBuild && !!config.build.ssr, // TODO: should we do this for all environments?
+          },
+          config.environments,
+        )
       : resolvePlugin(
           {
             root: config.root,
