@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import colors from 'picocolors'
-import type { PartialResolvedId } from 'rolldown'
+import type { PartialResolvedId, RolldownPlugin } from 'rolldown'
 import { exports, imports } from 'resolve.exports'
 import { hasESMSyntax } from 'mlly'
 import type { Plugin } from '../plugin'
@@ -184,6 +184,40 @@ export interface InternalResolveOptions
 export interface ResolvePluginOptionsWithOverrides
   extends ResolveOptions,
     ResolvePluginOptions {}
+
+export function filteredResolvePlugin(
+  resolveOptions: ResolvePluginOptionsWithOverrides,
+): RolldownPlugin {
+  const originalPlugin = resolvePlugin(resolveOptions)
+
+  return {
+    name: 'vite:resolve',
+    options(option) {
+      option.resolve ??= {}
+      option.resolve.extensions = this.environment.config.resolve.extensions
+      option.resolve.extensionAlias = {
+        '.js': ['.ts', '.tsx', '.js'],
+        '.jsx': ['.ts', '.tsx', '.jsx'],
+        '.mjs': ['.mts', '.mjs'],
+        '.cjs': ['.cts', '.cjs'],
+      }
+    },
+    resolveId: {
+      filter: {
+        id: {
+          exclude: [
+            // relative paths without query
+            /^\.\.?[/\\][^?]+$/,
+            /^(?:\0|\/?virtual:)/,
+          ],
+        },
+      },
+      // @ts-expect-error the options is incompatible
+      handler: originalPlugin.resolveId!,
+    },
+    load: originalPlugin.load,
+  }
+}
 
 export function resolvePlugin(
   resolveOptions: ResolvePluginOptionsWithOverrides,

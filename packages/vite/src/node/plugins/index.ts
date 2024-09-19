@@ -15,7 +15,7 @@ import { isDepOptimizationDisabled } from '../optimizer'
 import type { HookHandler, Plugin, PluginWithRequiredHook } from '../plugin'
 import { watchPackageDataPlugin } from '../packages'
 import { jsonPlugin } from './json'
-import { resolvePlugin } from './resolve'
+import { filteredResolvePlugin, resolvePlugin } from './resolve'
 import { optimizedDepsPlugin } from './optimizedDeps'
 import { esbuildPlugin } from './esbuild'
 import { importAnalysisPlugin } from './importAnalysis'
@@ -82,7 +82,15 @@ export async function resolvePlugins(
         : modulePreloadPolyfillPlugin(config)
       : null,
     enableNativePlugin
-      ? null
+      ? filteredResolvePlugin({
+          root: config.root,
+          isProduction: config.isProduction,
+          isBuild,
+          packageCache: config.packageCache,
+          asSrc: true,
+          optimizeDeps: true,
+          externalize: true,
+        })
       : resolvePlugin({
           root: config.root,
           isProduction: config.isProduction,
