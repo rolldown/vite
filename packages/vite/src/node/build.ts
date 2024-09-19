@@ -497,7 +497,13 @@ export async function resolveBuildPlugins(config: ResolvedConfig): Promise<{
         ? [
             config.build.manifest && enableNativePlugin
               ? // TODO: make this environment-specific
-                nativeManifestPlugin()
+                nativeManifestPlugin({
+                  root: config.root,
+                  outPath:
+                    config.build.manifest === true
+                      ? '.vite/manifest.json'
+                      : config.build.manifest,
+                })
               : manifestPlugin(),
             ssrManifestPlugin(),
             ...(enableBuildReport ? [buildReporterPlugin(config)] : []),
