@@ -1037,10 +1037,10 @@ export function resolveBuildOutputs(
 }
 
 const warningIgnoreList = [`CIRCULAR_DEPENDENCY`, `THIS_IS_UNDEFINED`]
-const dynamicImportWarningIgnoreList = [
-  `Unsupported expression`,
-  `statically analyzed`,
-]
+// const dynamicImportWarningIgnoreList = [
+//   `Unsupported expression`,
+//   `statically analyzed`,
+// ]
 
 function clearLine() {
   const tty = process.stdout.isTTY && !process.env.CI
@@ -1065,41 +1065,41 @@ export function onRollupWarning(
     }
 
     if (typeof warning === 'object') {
-      if (warning.code === 'UNRESOLVED_IMPORT') {
-        const id = warning.id
-        const exporter = warning.exporter
-        // throw unless it's commonjs external...
-        if (!id || !id.endsWith('?commonjs-external')) {
-          throw new Error(
-            `[vite]: Rollup failed to resolve import "${exporter}" from "${id}".\n` +
-              `This is most likely unintended because it can break your application at runtime.\n` +
-              `If you do want to externalize this module explicitly add it to\n` +
-              `\`build.rollupOptions.external\``,
-          )
-        }
-      }
+      // if (warning.code === 'UNRESOLVED_IMPORT') {
+      //   const id = warning.id
+      //   const exporter = warning.exporter
+      //   // throw unless it's commonjs external...
+      //   if (!id || !id.endsWith('?commonjs-external')) {
+      //     throw new Error(
+      //       `[vite]: Rollup failed to resolve import "${exporter}" from "${id}".\n` +
+      //         `This is most likely unintended because it can break your application at runtime.\n` +
+      //         `If you do want to externalize this module explicitly add it to\n` +
+      //         `\`build.rollupOptions.external\``,
+      //     )
+      //   }
+      // }
 
-      if (
-        warning.plugin === 'rollup-plugin-dynamic-import-variables' &&
-        dynamicImportWarningIgnoreList.some((msg) =>
-          warning.message.includes(msg),
-        )
-      ) {
-        return
-      }
+      // if (
+      //   warning.plugin === 'rollup-plugin-dynamic-import-variables' &&
+      //   dynamicImportWarningIgnoreList.some((msg) =>
+      //     warning.message.includes(msg),
+      //   )
+      // ) {
+      //   return
+      // }
 
       if (warningIgnoreList.includes(warning.code!)) {
         return
       }
 
-      if (warning.code === 'PLUGIN_WARNING') {
-        environment.logger.warn(
-          `${colors.bold(
-            colors.yellow(`[plugin:${warning.plugin}]`),
-          )} ${colors.yellow(warning.message)}`,
-        )
-        return
-      }
+      // if (warning.code === 'PLUGIN_WARNING') {
+      //   environment.logger.warn(
+      //     `${colors.bold(
+      //       colors.yellow(`[plugin:${warning.plugin}]`),
+      //     )} ${colors.yellow(warning.message)}`,
+      //   )
+      //   return
+      // }
     }
 
     warn(warnLog)
