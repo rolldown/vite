@@ -85,6 +85,11 @@ async function bundleWorkerEntry(
     onwarn(warning, warn) {
       onRollupWarning(warning, warn, workerEnvironment)
     },
+    // TODO: remove this and enable rolldown's CSS support later
+    moduleTypes: {
+      '.css': 'js',
+      ...rollupOptions.moduleTypes,
+    },
     // preserveEntrySignatures: false,
   })
   let chunk: OutputChunk
