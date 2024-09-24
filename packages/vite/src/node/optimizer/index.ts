@@ -791,6 +791,11 @@ async function prepareRolldownOptimizerRun(
         conditionNames: ['browser'],
       },
       ...rollupOptions,
+      // TODO: remove this and enable rolldown's CSS support later
+      moduleTypes: {
+        '.css': 'js',
+        ...rollupOptions.moduleTypes,
+      },
     })
     if (canceled) {
       await bundle.close()
@@ -1070,6 +1075,11 @@ export async function extractExportsData(
       ...remainingRollupOptions,
       plugins,
       input: [filePath],
+      // TODO: remove this and enable rolldown's CSS support later
+      moduleTypes: {
+        '.css': 'js',
+        ...remainingRollupOptions.moduleTypes,
+      },
     })
     const result = await build.generate({
       ...rollupOptions.output,

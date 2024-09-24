@@ -146,8 +146,11 @@ const _require = createRequire(import.meta.url)
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// NOTE: we don't use VERSION variable exported from rollup to avoid importing rollup in dev
-export const rollupVersion =
+// https://github.com/rolldown/rolldown/blob/7bc51f099a916dbe31bc0582995c58cf0d0f8924/packages/rolldown/src/log/logger.ts#L67
+export const rollupVersion = '4.23.0'
+
+// NOTE: we don't use VERSION variable exported from rolldown to avoid importing rolldown in dev
+export const rolldownVersion =
   resolvePackageData('rolldown', _dirname, true)?.data.version ?? ''
 
 // set in bin/vite.js
