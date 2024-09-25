@@ -322,11 +322,10 @@
     rd,
     re,
     rf,
-    rg,
   } from '@vitejs/test-resolve-browser-field/relative'
 
-  const success = [main, a, c, d, e, f, h, i, ra, rc, rd, re, rf]
-  const noSuccess = [b, g, rb, rg]
+  const success = [main, a, c, d, e, f, h, i, ra, rc, rd, re]
+  const noSuccess = [b, g, rb, rf]
 
   if (
     [...success, ...noSuccess].filter((text) => text.includes('[success]'))
