@@ -183,7 +183,8 @@ export function definePlugin(config: ResolvedConfig): RolldownPlugin {
   if (enableNativePlugin) {
     delete plugin.transform
     plugin.options = function (option) {
-      const [define, _pattern, _importMetaEnvVal] = getPattern(this.environment)
+      const [define, _pattern, importMetaEnvVal] = getPattern(this.environment)
+      define['import.meta.env'] = importMetaEnvVal
       option.define = define
     }
   }
