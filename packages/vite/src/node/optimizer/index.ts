@@ -756,7 +756,6 @@ async function prepareRolldownOptimizerRun(
         const result = await transformWithOxc(code, id, {
           sourcemap: true,
           jsx: jsxLoader && /\.js$/.test(id) ? true : undefined,
-          define,
         })
         return {
           code: result.code,
@@ -772,6 +771,7 @@ async function prepareRolldownOptimizerRun(
       input: flatIdDeps,
       logLevel: 'warn',
       plugins,
+      define,
       resolve: {
         // TODO: set aliasFields, conditionNames depending on `platform`
         mainFields: ['module', 'main'],
