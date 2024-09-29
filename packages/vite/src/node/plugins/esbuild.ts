@@ -477,7 +477,9 @@ export async function loadTsconfigJsonForFile(
   }
 }
 
-async function reloadOnTsconfigChange(changedFile: string) {
+export async function reloadOnTsconfigChange(
+  changedFile: string,
+): Promise<void> {
   // server could be closed externally after a file change is detected
   if (!server) return
   // any tsconfig.json that's added in the workspace could be closer to a code file than a previously cached one

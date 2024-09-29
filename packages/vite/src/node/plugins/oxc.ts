@@ -6,7 +6,8 @@ import { combineSourcemaps, createFilter } from '../utils'
 import type { ResolvedConfig } from '../config'
 import type { Plugin } from '../plugin'
 import { cleanUrl } from '../../shared/utils'
-import { loadTsconfigJsonForFile } from './esbuild'
+import type { ViteDevServer } from '../server'
+import { loadTsconfigJsonForFile, reloadOnTsconfigChange } from './esbuild'
 
 const jsxExtensionsRE = /\.(?:j|t)sx\b/
 const validExtensionRE = /\.\w+$/
@@ -92,6 +93,10 @@ export async function transformWithOxc(
   }
 }
 
+// TODO: rework to avoid caching the server for this module.
+// If two servers are created in the same process, they will interfere with each other.
+let server: ViteDevServer
+
 export function oxcPlugin(config: ResolvedConfig): Plugin {
   const options = config.oxc as OxcOptions
   const { jsxInject, include, exclude, ...oxcTransformOptions } = options
@@ -100,6 +105,17 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
 
   return {
     name: 'vite:oxc',
+    configureServer(_server) {
+      server = _server
+      server.watcher
+        .on('add', reloadOnTsconfigChange)
+        .on('change', reloadOnTsconfigChange)
+        .on('unlink', reloadOnTsconfigChange)
+    },
+    buildEnd() {
+      // recycle serve to avoid preventing Node self-exit (#6815)
+      server = null as any
+    },
     async transform(code, id) {
       if (filter(id) || filter(cleanUrl(id))) {
         const result = await transformWithOxc(code, id, oxcTransformOptions)

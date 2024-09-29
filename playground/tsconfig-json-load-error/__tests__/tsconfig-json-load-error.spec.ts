@@ -49,12 +49,12 @@ describe.runIf(isServe)('server', () => {
     expect(message).toMatch(unexpectedTokenSyntaxErrorRE)
   })
 
-  // test('should reload when tsconfig is changed', async () => {
-  //   await editFile('has-error/tsconfig.json', (content) => {
-  //     return content.replace('"compilerOptions":', '"compilerOptions":{}')
-  //   })
-  //   await untilUpdated(() => {
-  //     return browserLogs.find((x) => x === 'tsconfig error fixed, file loaded')
-  //   }, 'tsconfig error fixed, file loaded')
-  // })
+  test('should reload when tsconfig is changed', async () => {
+    await editFile('has-error/tsconfig.json', (content) => {
+      return content.replace('"compilerOptions":', '"compilerOptions":{}')
+    })
+    await untilUpdated(() => {
+      return browserLogs.find((x) => x === 'tsconfig error fixed, file loaded')
+    }, 'tsconfig error fixed, file loaded')
+  })
 })
