@@ -89,6 +89,7 @@ import type { ResolvedSSROptions, SSROptions } from './ssr'
 import { resolveSSROptions } from './ssr'
 import { PartialEnvironment } from './baseEnvironment'
 import { createIdResolver } from './idResolver'
+import type { OxcOptions } from './plugins/oxc'
 
 const debug = createDebugger('vite:config')
 const promisifiedRealpath = promisify(fs.realpath)
@@ -571,6 +572,7 @@ export type ResolvedConfig = Readonly<
     plugins: readonly Plugin[]
     css: ResolvedCSSOptions
     esbuild: ESBuildOptions | false
+    oxc: OxcOptions | false
     server: ResolvedServerOptions
     dev: ResolvedDevEnvironmentOptions
     builder: ResolvedBuilderOptions

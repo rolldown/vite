@@ -23,9 +23,10 @@ import {
   unique,
 } from '../utils'
 import { transformWithEsbuild } from '../plugins/esbuild'
-import { ESBUILD_MODULES_TARGET, METADATA_FILENAME } from '../constants'
+import { METADATA_FILENAME } from '../constants'
 import { isWindows } from '../../shared/utils'
 import type { Environment } from '../environment'
+import { transformWithOxc } from '../plugins/oxc'
 import { ScanEnvironment, scanImports } from './scan'
 import { createOptimizeDepsIncludeResolver, expandGlobIds } from './resolve'
 import {
@@ -752,12 +753,10 @@ async function prepareRolldownOptimizerRun(
     name: 'optimizer-transform',
     async transform(code, id) {
       if (/\.(?:m?[jt]s|[jt]sx)$/.test(id)) {
-        const result = await transformWithEsbuild(code, id, {
+        const result = await transformWithOxc(code, id, {
           sourcemap: true,
-          sourcefile: id,
-          loader: jsxLoader && /\.js$/.test(id) ? 'jsx' : undefined,
+          jsx: jsxLoader && /\.js$/.test(id) ? true : undefined,
           define,
-          target: ESBUILD_MODULES_TARGET,
         })
         return {
           code: result.code,
