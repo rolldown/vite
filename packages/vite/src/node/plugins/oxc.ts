@@ -12,10 +12,10 @@ const jsxExtensionsRE = /\.(?:j|t)sx\b/
 const validExtensionRE = /\.\w+$/
 
 // should import from rolldown
-declare type TransformOptions = any
-declare type TransformResult = any
+declare type OxcTransformOptions = any
+declare type OxcTransformResult = any
 
-export interface OxcOptions extends TransformOptions {
+export interface OxcOptions extends OxcTransformOptions {
   include?: string | RegExp | string[] | RegExp[]
   exclude?: string | RegExp | string[] | RegExp[]
   jsxInject?: string
@@ -24,9 +24,9 @@ export interface OxcOptions extends TransformOptions {
 export async function transformWithOxc(
   code: string,
   filename: string,
-  options?: TransformOptions,
+  options?: OxcTransformOptions,
   inMap?: object,
-): Promise<TransformResult> {
+): Promise<OxcTransformResult> {
   const resolvedOptions = {
     sourcemap: true,
     ...options,

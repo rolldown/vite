@@ -342,6 +342,11 @@ export interface UserConfig extends DefaultEnvironmentOptions {
    */
   esbuild?: ESBuildOptions | false
   /**
+   * Transform options to pass to esbuild.
+   * Or set to `false` to disable esbuild.
+   */
+  oxc?: OxcOptions | false
+  /**
    * Specify additional picomatch patterns to be treated as static assets.
    */
   assetsInclude?: string | RegExp | (string | RegExp)[]
@@ -1225,6 +1230,15 @@ export async function resolveConfig(
     isProduction,
     plugins: userPlugins, // placeholder to be replaced
     css: resolveCSSOptions(config.css),
+    oxc:
+      config.oxc === false
+        ? false
+        : {
+            react: {
+              development: !isProduction,
+            },
+            ...config.oxc,
+          },
     esbuild:
       config.esbuild === false
         ? false
