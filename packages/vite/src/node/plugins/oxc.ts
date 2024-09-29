@@ -45,8 +45,6 @@ export async function transformWithOxc(
       pragma: loadedCompilerOptions.jsxFactory,
       pragmaFrag: loadedCompilerOptions.jsxFragmentFactory,
       importSource: loadedCompilerOptions.jsxImportSource,
-      development: loadedCompilerOptions.jsx === 'react-jsxdev',
-      runtime: loadedCompilerOptions.jsx === 'react-jsxdev',
     }
 
     switch (loadedCompilerOptions.jsx) {
