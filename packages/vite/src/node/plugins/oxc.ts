@@ -42,7 +42,6 @@ export async function transformWithOxc(
     // tsc compiler alwaysStrict/experimentalDecorators/importsNotUsedAsValues/preserveValueImports/target/useDefineForClassFields/verbatimModuleSyntax
 
     resolvedOptions.react = {
-      jsxFactory: loadedCompilerOptions.jsx,
       pragma: loadedCompilerOptions.jsxFactory,
       pragmaFrag: loadedCompilerOptions.jsxFragmentFactory,
       importSource: loadedCompilerOptions.jsxImportSource,
