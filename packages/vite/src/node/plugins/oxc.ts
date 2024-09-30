@@ -147,6 +147,9 @@ export function convertEsbuildConfigToOxcConfig(
     esbuildConfig
 
   const oxcOptions: OxcOptions = {
+    jsxInject,
+    include,
+    exclude,
     react: {},
   }
 

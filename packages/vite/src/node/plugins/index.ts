@@ -111,7 +111,7 @@ export async function resolvePlugins(
         ),
     htmlInlineProxyPlugin(config),
     cssPlugin(config),
-    config.esbuild !== false
+    config.oxc !== false
       ? enableNativePlugin
         ? nativeTransformPlugin()
         : oxcPlugin(config)
