@@ -1210,11 +1210,10 @@ export async function resolveConfig(
 
   const base = withTrailingSlash(resolvedBase)
 
-  let oxc: OxcOptions | false = false
+  let oxc: OxcOptions | false | undefined = config.oxc
 
   if (config.esbuild) {
     if (config.oxc) {
-      oxc = config.oxc
       logger.warn(
         `Found esbuild and oxc options, will use oxc and ignore esbuild at transformer.`,
       )
@@ -1252,13 +1251,8 @@ export async function resolveConfig(
             },
             ...oxc,
           },
-    esbuild:
-      config.esbuild === false
-        ? false
-        : {
-            jsxDev: !isProduction,
-            ...config.esbuild,
-          },
+    // preserve esbuild for buildEsbuildPlugin
+    esbuild: config.esbuild,
     server,
     builder,
     preview: resolvePreviewOptions(config.preview, server),
