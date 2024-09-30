@@ -50,6 +50,13 @@ export default defineConfig({
       )
         return false
     },
+    // Disabled, Because the error printed by rust cannot be seen
+    disableConsoleIntercept: true,
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
   },
   esbuild: {
     target: 'node18',
