@@ -89,7 +89,7 @@ import type { ResolvedSSROptions, SSROptions } from './ssr'
 import { resolveSSROptions } from './ssr'
 import { PartialEnvironment } from './baseEnvironment'
 import { createIdResolver } from './idResolver'
-import type { OxcOptions } from './plugins/oxc'
+import { type OxcOptions, convertEsbuildConfigToOxcConfig } from './plugins/oxc'
 
 const debug = createDebugger('vite:config')
 const promisifiedRealpath = promisify(fs.realpath)
@@ -576,7 +576,7 @@ export type ResolvedConfig = Readonly<
     }
     plugins: readonly Plugin[]
     css: ResolvedCSSOptions
-    esbuild: ESBuildOptions | false
+    // esbuild: ESBuildOptions | false
     oxc: OxcOptions | false
     server: ResolvedServerOptions
     dev: ResolvedDevEnvironmentOptions
@@ -1210,6 +1210,19 @@ export async function resolveConfig(
 
   const base = withTrailingSlash(resolvedBase)
 
+  let oxc: OxcOptions | false = false
+
+  if (config.esbuild) {
+    if (config.oxc) {
+      oxc = config.oxc
+      logger.warn(
+        `Found esbuild and oxc options, will use oxc and ignore esbuild at transformer.`,
+      )
+    } else {
+      oxc = convertEsbuildConfigToOxcConfig(config.esbuild, logger)
+    }
+  }
+
   resolved = {
     configFile: configFile ? normalizePath(configFile) : undefined,
     configFileDependencies: configFileDependencies.map((name) =>
@@ -1231,13 +1244,13 @@ export async function resolveConfig(
     plugins: userPlugins, // placeholder to be replaced
     css: resolveCSSOptions(config.css),
     oxc:
-      config.oxc === false
+      oxc === false
         ? false
         : {
             react: {
               development: !isProduction,
             },
-            ...config.oxc,
+            ...oxc,
           },
     esbuild:
       config.esbuild === false

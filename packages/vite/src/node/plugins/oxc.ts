@@ -4,9 +4,11 @@ import type { RawSourceMap } from '@ampproject/remapping'
 import type { SourceMap } from 'rolldown'
 import { combineSourcemaps, createFilter } from '../utils'
 import type { ResolvedConfig } from '../config'
-import type { Plugin } from '../plugin'
+import type { Plugin, PluginContext } from '../plugin'
 import { cleanUrl } from '../../shared/utils'
 import type { ViteDevServer } from '../server'
+import type { Logger } from '..'
+import type { ESBuildOptions } from './esbuild'
 import { loadTsconfigJsonForFile, reloadOnTsconfigChange } from './esbuild'
 
 const jsxExtensionsRE = /\.(?:j|t)sx\b/
@@ -23,6 +25,7 @@ export interface OxcOptions extends OxcTransformOptions {
 }
 
 export async function transformWithOxc(
+  ctx: PluginContext,
   code: string,
   filename: string,
   options?: OxcTransformOptions,
@@ -62,7 +65,7 @@ export async function transformWithOxc(
         resolvedOptions.react.runtime = 'automatic'
         break
       case 'preserve':
-        // not support
+        ctx.warn('The tsconfig jsx preserve is not supported at oxc')
         break
 
       default:
@@ -118,7 +121,12 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
     },
     async transform(code, id) {
       if (filter(id) || filter(cleanUrl(id))) {
-        const result = await transformWithOxc(code, id, oxcTransformOptions)
+        const result = await transformWithOxc(
+          this,
+          code,
+          id,
+          oxcTransformOptions,
+        )
         if (jsxInject && jsxExtensionsRE.test(id)) {
           result.code = jsxInject + ';' + result.code
         }
@@ -129,4 +137,61 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
       }
     },
   }
+}
+
+export function convertEsbuildConfigToOxcConfig(
+  esbuildConfig: ESBuildOptions,
+  logger: Logger,
+): OxcOptions {
+  const { jsxInject, include, exclude, ...esbuildTransformOptions } =
+    esbuildConfig
+
+  const oxcOptions: OxcOptions = {
+    react: {},
+  }
+
+  switch (esbuildTransformOptions.jsx) {
+    case 'automatic':
+      oxcOptions.react.runtime = 'automatic'
+      break
+
+    case 'transform':
+      oxcOptions.react.runtime = 'classic'
+      break
+
+    case 'preserve':
+      logger.warn('The esbuild jsx preserve is not supported at oxc')
+      break
+
+    default:
+      break
+  }
+
+  if (esbuildTransformOptions.jsxDev) {
+    oxcOptions.react.development = true
+  }
+  if (esbuildTransformOptions.jsxFactory) {
+    oxcOptions.react.pragma = esbuildTransformOptions.jsxFactory
+  }
+  if (esbuildTransformOptions.jsxFragment) {
+    oxcOptions.react.pragmaFrag = esbuildTransformOptions.jsxFragment
+  }
+  if (esbuildTransformOptions.jsxImportSource) {
+    oxcOptions.react.importSource = esbuildTransformOptions.jsxImportSource
+  }
+
+  switch (esbuildTransformOptions.sourcemap) {
+    case true:
+    case false:
+      oxcOptions.sourcemap = esbuildTransformOptions.sourcemap
+      break
+
+    default:
+      logger.warn(
+        `The esbuild sourcemap ${esbuildTransformOptions.sourcemap} is not supported at oxc`,
+      )
+      break
+  }
+
+  return oxcOptions
 }
