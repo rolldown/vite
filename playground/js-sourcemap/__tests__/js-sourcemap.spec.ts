@@ -140,7 +140,7 @@ describe.runIf(isBuild)('build tests', () => {
     expect(formatSourcemapForSnapshot(JSON.parse(map))).toMatchInlineSnapshot(`
       {
         "ignoreList": [],
-        "mappings": ";+8BAAA,OAAO,2BAAuB,0BAE9B,QAAQ,IAAI,uBAAuB",
+        "mappings": ";4jCAAA,OAAO,6BAAuB,wBAE9B,QAAQ,IAAI",
         "sources": [
           "../../after-preload-dynamic.js",
         ],
@@ -156,7 +156,7 @@ describe.runIf(isBuild)('build tests', () => {
     // verify sourcemap comment is preserved at the last line
     const js = findAssetFile(/after-preload-dynamic-[-\w]{8}\.js$/)
     expect(js).toMatch(
-      /\n\/\/# sourceMappingURL=after-preload-dynamic-[-\w]{8}\.js\.map\n$/,
+      /\n\/\/# sourceMappingURL=after-preload-dynamic-[-\w]{8}\.js\.map\n?$/,
     )
   })
 
@@ -177,7 +177,7 @@ describe.runIf(isBuild)('build tests', () => {
     const map = findAssetFile(/with-define-object.*\.js\.map/)
     expect(formatSourcemapForSnapshot(JSON.parse(map))).toMatchInlineSnapshot(`
       {
-        "mappings": "qBAEA,SAASA,GAAO,CACJC,EAAA,CACZ,CAEA,SAASA,GAAY,CAEX,QAAA,MAAM,qBAAsBC,CAAkB,CACxD,CAEAF,EAAK",
+        "mappings": "qBAEA,SAAS,GAAO,CACd,EAAA,CACF,CAEA,SAAS,GAAY,CAEnB,QAAQ,MAAM,qBAAsB,CAAA,CACtC,CAEA,EAAA",
         "sources": [
           "../../with-define-object.ts",
         ],
