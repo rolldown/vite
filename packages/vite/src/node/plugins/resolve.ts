@@ -191,14 +191,19 @@ export function filteredResolvePlugin(
     options(option) {
       option.resolve ??= {}
       option.resolve.extensions = this.environment.config.resolve.extensions
+      option.resolve.extensionAlias = {
+        '.js': ['.ts', '.tsx', '.js'],
+        '.jsx': ['.ts', '.tsx', '.jsx'],
+        '.mjs': ['.mts', '.mjs'],
+        '.cjs': ['.cts', '.cjs'],
+      }
     },
     resolveId: {
       filter: {
         id: {
           exclude: [
             // relative paths without query
-            // also exclude path ending with .[cm]?jsx? (for typescript moduleResolution=nodenext)
-            /^\.\.?[/\\](?!.*\.[cm]?jsx?$)[^?]+$/,
+            /^\.\.?[/\\][^?]+$/,
             /^(?:\0|\/?virtual:)/,
           ],
         },
