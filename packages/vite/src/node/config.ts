@@ -89,6 +89,7 @@ import type { ResolvedSSROptions, SSROptions } from './ssr'
 import { resolveSSROptions } from './ssr'
 import { PartialEnvironment } from './baseEnvironment'
 import { createIdResolver } from './idResolver'
+import { type OxcOptions, convertEsbuildConfigToOxcConfig } from './plugins/oxc'
 
 const debug = createDebugger('vite:config')
 const promisifiedRealpath = promisify(fs.realpath)
@@ -341,6 +342,11 @@ export interface UserConfig extends DefaultEnvironmentOptions {
    */
   esbuild?: ESBuildOptions | false
   /**
+   * Transform options to pass to esbuild.
+   * Or set to `false` to disable esbuild.
+   */
+  oxc?: OxcOptions | false
+  /**
    * Specify additional picomatch patterns to be treated as static assets.
    */
   assetsInclude?: string | RegExp | (string | RegExp)[]
@@ -570,7 +576,8 @@ export type ResolvedConfig = Readonly<
     }
     plugins: readonly Plugin[]
     css: ResolvedCSSOptions
-    esbuild: ESBuildOptions | false
+    // esbuild: ESBuildOptions | false
+    oxc: OxcOptions | false
     server: ResolvedServerOptions
     dev: ResolvedDevEnvironmentOptions
     builder: ResolvedBuilderOptions
@@ -1203,6 +1210,18 @@ export async function resolveConfig(
 
   const base = withTrailingSlash(resolvedBase)
 
+  let oxc: OxcOptions | false | undefined = config.oxc
+
+  if (config.esbuild) {
+    if (config.oxc) {
+      logger.warn(
+        `Found esbuild and oxc options, will use oxc and ignore esbuild at transformer.`,
+      )
+    } else {
+      oxc = convertEsbuildConfigToOxcConfig(config.esbuild, logger)
+    }
+  }
+
   resolved = {
     configFile: configFile ? normalizePath(configFile) : undefined,
     configFileDependencies: configFileDependencies.map((name) =>
@@ -1223,13 +1242,17 @@ export async function resolveConfig(
     isProduction,
     plugins: userPlugins, // placeholder to be replaced
     css: resolveCSSOptions(config.css),
-    esbuild:
-      config.esbuild === false
+    oxc:
+      oxc === false
         ? false
         : {
-            jsxDev: !isProduction,
-            ...config.esbuild,
+            react: {
+              development: !isProduction,
+            },
+            ...oxc,
           },
+    // preserve esbuild for buildEsbuildPlugin
+    esbuild: config.esbuild,
     server,
     builder,
     preview: resolvePreviewOptions(config.preview, server),

@@ -18,7 +18,6 @@ import { getFsUtils } from '../fsUtils'
 import { jsonPlugin } from './json'
 import { filteredResolvePlugin, resolvePlugin } from './resolve'
 import { optimizedDepsPlugin } from './optimizedDeps'
-import { esbuildPlugin } from './esbuild'
 import { importAnalysisPlugin } from './importAnalysis'
 import { cssAnalysisPlugin, cssPlugin, cssPostPlugin } from './css'
 import { assetPlugin } from './asset'
@@ -34,6 +33,7 @@ import { assetImportMetaUrlPlugin } from './assetImportMetaUrl'
 import { metadataPlugin } from './metadata'
 import { dynamicImportVarsPlugin } from './dynamicImportVars'
 import { importGlobPlugin } from './importMetaGlob'
+import { oxcPlugin } from './oxc'
 
 export async function resolvePlugins(
   config: ResolvedConfig,
@@ -111,10 +111,10 @@ export async function resolvePlugins(
         ),
     htmlInlineProxyPlugin(config),
     cssPlugin(config),
-    config.esbuild !== false
+    config.oxc !== false
       ? enableNativePlugin
         ? nativeTransformPlugin()
-        : esbuildPlugin(config)
+        : oxcPlugin(config)
       : null,
     enableNativePlugin
       ? nativeJsonPlugin({
