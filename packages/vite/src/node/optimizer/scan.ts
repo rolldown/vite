@@ -282,10 +282,10 @@ async function prepareRolldownScanner(
 
   async function build() {
     await scan({
+      ...rollupOptions,
       input: entries,
       logLevel: 'silent',
       plugins,
-      ...rollupOptions,
     })
   }
 

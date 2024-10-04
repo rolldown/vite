@@ -809,6 +809,7 @@ function resolveEnvironmentOptions(
       options.optimizeDeps,
       resolve.preserveSymlinks,
       consumer,
+      logger,
     ),
     dev: resolveDevEnvironmentOptions(
       options.dev,
@@ -981,7 +982,118 @@ function resolveDepOptimizationOptions(
   optimizeDeps: DepOptimizationOptions | undefined,
   preserveSymlinks: boolean,
   consumer: 'client' | 'server' | undefined,
+  logger: Logger,
 ): DepOptimizationOptions {
+  if (optimizeDeps?.esbuildOptions) {
+    logger.warn(
+      colors.yellow(
+        `You have set \`optimizeDeps.esbuildOptions\` but this options is now deprecated. ` +
+          `Vite now uses Rolldown to optimize the dependencies. ` +
+          `Please use \`optimizeDeps.rollupOptions\` instead.`,
+      ),
+    )
+
+    optimizeDeps.rollupOptions ??= {}
+    optimizeDeps.rollupOptions.resolve ??= {}
+    optimizeDeps.rollupOptions.output ??= {}
+
+    const setResolveOptions = <
+      T extends keyof Exclude<RollupOptions['resolve'], undefined>,
+    >(
+      key: T,
+      value: Exclude<RollupOptions['resolve'], undefined>[T],
+    ) => {
+      if (
+        value !== undefined &&
+        optimizeDeps.rollupOptions!.resolve![key] === undefined
+      ) {
+        optimizeDeps.rollupOptions!.resolve![key] = value
+      }
+    }
+
+    if (
+      optimizeDeps.esbuildOptions.minify !== undefined &&
+      optimizeDeps.rollupOptions.output.minify === undefined
+    ) {
+      optimizeDeps.rollupOptions.output.minify =
+        optimizeDeps.esbuildOptions.minify
+    }
+    if (
+      optimizeDeps.esbuildOptions.treeShaking !== undefined &&
+      optimizeDeps.rollupOptions.treeshake === undefined
+    ) {
+      optimizeDeps.rollupOptions.treeshake =
+        optimizeDeps.esbuildOptions.treeShaking
+    }
+    if (
+      optimizeDeps.esbuildOptions.define !== undefined &&
+      optimizeDeps.rollupOptions.define === undefined
+    ) {
+      optimizeDeps.rollupOptions.define = optimizeDeps.esbuildOptions.define
+    }
+    if (optimizeDeps.esbuildOptions.loader !== undefined) {
+      const loader = optimizeDeps.esbuildOptions.loader
+      optimizeDeps.rollupOptions.moduleTypes ??= {}
+      for (const [key, value] of Object.entries(loader)) {
+        if (
+          optimizeDeps.rollupOptions.moduleTypes[key] === undefined &&
+          value !== 'copy' &&
+          value !== 'css' &&
+          value !== 'default' &&
+          value !== 'file' &&
+          value !== 'local-css'
+        ) {
+          optimizeDeps.rollupOptions.moduleTypes[key] = value
+        }
+      }
+    }
+    setResolveOptions('symlinks', optimizeDeps.esbuildOptions.preserveSymlinks)
+    setResolveOptions(
+      'extensions',
+      optimizeDeps.esbuildOptions.resolveExtensions,
+    )
+    setResolveOptions('mainFields', optimizeDeps.esbuildOptions.mainFields)
+    setResolveOptions('conditionNames', optimizeDeps.esbuildOptions.conditions)
+
+    // NOTE: the following options cannot be converted
+    // - legalComments
+    // - target, supported (Vite used to transpile down to `ESBUILD_MODULES_TARGET`)
+    // - ignoreAnnotations
+    // - jsx, jsxFactory, jsxFragment, jsxImportSource, jsxDev, jsxSideEffects
+    // - tsconfigRaw, tsconfig
+
+    // NOTE: the following options can be converted but probably not worth it
+    // - sourceRoot
+    // - sourcesContent (`output.sourcemapExcludeSources` is not supported by rolldown)
+    // - drop
+    // - dropLabels
+    // - mangleProps, reserveProps, mangleQuoted, mangleCache
+    // - minifyWhitespace, minifyIdentifiers, minifySyntax
+    // - lineLimit
+    // - charset
+    // - pure (`treeshake.manualPureFunctions` is not supported by rolldown)
+    // - alias (it probably does not work the same with `resolve.alias`)
+    // - inject
+    // - banner, footer
+    // - plugins (not sure if it's possible and need to check if it's worth it before)
+    // - nodePaths
+
+    // NOTE: the following options does not make sense to set / convert it
+    // - globalName (we only use ESM format)
+    // - keepNames (probably rolldown does not need it? not sure)
+    // - color
+    // - logLimit
+    // - logOverride
+    // - splitting
+    // - outbase
+    // - packages (this should not be set)
+    // - allowOverwrite
+    // - publicPath (`file` loader is not supported by rolldown)
+    // - entryNames, chunkNames, assetNames (Vite does not support changing these options)
+    // - stdin
+    // - absWorkingDir
+  }
+
   return mergeWithDefaults(
     {
       ...configDefaults.optimizeDeps,
