@@ -14,6 +14,7 @@ import { browserExternalId, optionalPeerDepId } from '../plugins/resolve'
 import { isCSSRequest, isModuleCSSRequest } from '../plugins/css'
 import type { Environment } from '../environment'
 import { createBackCompatIdResolver } from '../idResolver'
+import { isWindows } from '../../shared/utils'
 
 const externalWithConversionNamespace =
   'vite:dep-pre-bundle:external-conversion'
@@ -170,7 +171,8 @@ export function rolldownDepPlugin(
           // or package name (e.g. import "some-package.pdf")
           if (JS_TYPES_RE.test(resolved)) {
             return {
-              id: resolved,
+              // normalize to \\ on windows for esbuild/rolldown behavior difference: https://github.com/sapphi-red-repros/rolldown-esbuild-path-normalization
+              id: isWindows ? resolved.replaceAll('/', '\\') : resolved,
               external: false,
             }
           }
