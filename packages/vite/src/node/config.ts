@@ -8,7 +8,7 @@ import { createRequire } from 'node:module'
 import colors from 'picocolors'
 import type { Alias, AliasOptions } from 'dep-types/alias'
 import { build } from 'esbuild'
-import type { RollupOptions } from 'rollup'
+import type { RollupOptions } from 'rolldown'
 import picomatch from 'picomatch'
 import type { AnymatchFn } from '../types/anymatch'
 import { withTrailingSlash } from '../shared/utils'
@@ -493,6 +493,14 @@ export interface ExperimentalOptions {
    * @default false
    */
   skipSsrTransform?: boolean
+
+  /**
+   * Enable builtin plugin that written by rust, which is faster than js plugin.
+   *
+   * @experimental
+   * @default true
+   */
+  enableNativePlugin?: boolean
 }
 
 export interface LegacyOptions {
@@ -590,6 +598,7 @@ export function resolveDevEnvironmentOptions(
   preserverSymlinks: boolean,
   environmentName: string | undefined,
   consumer: 'client' | 'server' | undefined,
+  logger: Logger,
   // Backward compatibility
   skipSsrTransform?: boolean,
 ): ResolvedDevEnvironmentOptions {
@@ -605,6 +614,7 @@ export function resolveDevEnvironmentOptions(
       dev?.optimizeDeps,
       preserverSymlinks,
       consumer,
+      logger,
     ),
     createEnvironment:
       dev?.createEnvironment ??
@@ -650,6 +660,7 @@ function resolveEnvironmentOptions(
       resolve.preserveSymlinks,
       environmentName,
       consumer,
+      logger,
       skipSsrTransform,
     ),
     build: resolveBuildEnvironmentOptions(
@@ -785,8 +796,120 @@ function resolveDepOptimizationOptions(
   optimizeDeps: DepOptimizationOptions | undefined,
   preserveSymlinks: boolean,
   consumer: 'client' | 'server' | undefined,
+  logger: Logger,
 ): DepOptimizationOptions {
   optimizeDeps ??= {}
+
+  if (optimizeDeps.esbuildOptions) {
+    logger.warn(
+      colors.yellow(
+        `You have set \`optimizeDeps.esbuildOptions\` but this options is now deprecated. ` +
+          `Vite now uses Rolldown to optimize the dependencies. ` +
+          `Please use \`optimizeDeps.rollupOptions\` instead.`,
+      ),
+    )
+
+    optimizeDeps.rollupOptions ??= {}
+    optimizeDeps.rollupOptions.resolve ??= {}
+    optimizeDeps.rollupOptions.output ??= {}
+
+    const setResolveOptions = <
+      T extends keyof Exclude<RollupOptions['resolve'], undefined>,
+    >(
+      key: T,
+      value: Exclude<RollupOptions['resolve'], undefined>[T],
+    ) => {
+      if (
+        value !== undefined &&
+        optimizeDeps.rollupOptions!.resolve![key] === undefined
+      ) {
+        optimizeDeps.rollupOptions!.resolve![key] = value
+      }
+    }
+
+    if (
+      optimizeDeps.esbuildOptions.minify !== undefined &&
+      optimizeDeps.rollupOptions.output.minify === undefined
+    ) {
+      optimizeDeps.rollupOptions.output.minify =
+        optimizeDeps.esbuildOptions.minify
+    }
+    if (
+      optimizeDeps.esbuildOptions.treeShaking !== undefined &&
+      optimizeDeps.rollupOptions.treeshake === undefined
+    ) {
+      optimizeDeps.rollupOptions.treeshake =
+        optimizeDeps.esbuildOptions.treeShaking
+    }
+    if (
+      optimizeDeps.esbuildOptions.define !== undefined &&
+      optimizeDeps.rollupOptions.define === undefined
+    ) {
+      optimizeDeps.rollupOptions.define = optimizeDeps.esbuildOptions.define
+    }
+    if (optimizeDeps.esbuildOptions.loader !== undefined) {
+      const loader = optimizeDeps.esbuildOptions.loader
+      optimizeDeps.rollupOptions.moduleTypes ??= {}
+      for (const [key, value] of Object.entries(loader)) {
+        if (
+          optimizeDeps.rollupOptions.moduleTypes[key] === undefined &&
+          value !== 'copy' &&
+          value !== 'css' &&
+          value !== 'default' &&
+          value !== 'file' &&
+          value !== 'local-css'
+        ) {
+          optimizeDeps.rollupOptions.moduleTypes[key] = value
+        }
+      }
+    }
+    setResolveOptions('symlinks', optimizeDeps.esbuildOptions.preserveSymlinks)
+    setResolveOptions(
+      'extensions',
+      optimizeDeps.esbuildOptions.resolveExtensions,
+    )
+    setResolveOptions('mainFields', optimizeDeps.esbuildOptions.mainFields)
+    setResolveOptions('conditionNames', optimizeDeps.esbuildOptions.conditions)
+
+    // NOTE: the following options cannot be converted
+    // - legalComments
+    // - target, supported (Vite used to transpile down to `ESBUILD_MODULES_TARGET`)
+    // - ignoreAnnotations
+    // - jsx, jsxFactory, jsxFragment, jsxImportSource, jsxDev, jsxSideEffects
+    // - tsconfigRaw, tsconfig
+
+    // NOTE: the following options can be converted but probably not worth it
+    // - sourceRoot
+    // - sourcesContent (`output.sourcemapExcludeSources` is not supported by rolldown)
+    // - drop
+    // - dropLabels
+    // - mangleProps, reserveProps, mangleQuoted, mangleCache
+    // - minifyWhitespace, minifyIdentifiers, minifySyntax
+    // - lineLimit
+    // - charset
+    // - pure (`treeshake.manualPureFunctions` is not supported by rolldown)
+    // - alias (it probably does not work the same with `resolve.alias`)
+    // - inject
+    // - banner, footer
+    // - plugins (not sure if it's possible and need to check if it's worth it before)
+    // - nodePaths
+
+    // NOTE: the following options does not make sense to set / convert it
+    // - globalName (we only use ESM format)
+    // - keepNames (probably rolldown does not need it? not sure)
+    // - color
+    // - logLimit
+    // - logOverride
+    // - splitting
+    // - outbase
+    // - packages (this should not be set)
+    // - allowOverwrite
+    // - publicPath (`file` loader is not supported by rolldown)
+    // - entryNames, chunkNames, assetNames (Vite does not support changing these options)
+    // - stdin
+    // - absWorkingDir
+  }
+
   return {
     include: optimizeDeps.include ?? [],
     exclude: optimizeDeps.exclude ?? [],
@@ -798,6 +921,7 @@ function resolveDepOptimizationOptions(
       preserveSymlinks,
       ...optimizeDeps.esbuildOptions,
     },
+    rollupOptions: optimizeDeps.rollupOptions,
     disabled: optimizeDeps.disabled,
     entries: optimizeDeps.entries,
     force: optimizeDeps.force ?? false,
@@ -1009,6 +1133,7 @@ export async function resolveConfig(
     // default environment options
     undefined,
     undefined,
+    logger,
   )
 
   const resolvedBuildOptions = resolveBuildEnvironmentOptions(
@@ -1228,6 +1353,7 @@ export async function resolveConfig(
     experimental: {
       importGlobRestoreExtension: false,
       hmrPartialAccept: false,
+      enableNativePlugin: false,
       ...config.experimental,
     },
     future: config.future,
@@ -1343,7 +1469,9 @@ export async function resolveConfig(
 
   // Check if all assetFileNames have the same reference.
   // If not, display a warn for user.
-  const outputOption = config.build?.rollupOptions?.output ?? []
+
+  // Note: the rolldown `output` option is object.
+  const outputOption = config.build?.rollupOptions?.output ?? {}
   // Use isArray to narrow its type to array
   if (Array.isArray(outputOption)) {
     const assetFileNamesList = outputOption.map(

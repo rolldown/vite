@@ -56,7 +56,7 @@ import type {
   SourceDescription,
   SourceMap,
   TransformResult,
-} from 'rollup'
+} from 'rolldown'
 import type { RawSourceMap } from '@ampproject/remapping'
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import MagicString from 'magic-string'
@@ -73,6 +73,7 @@ import {
   normalizePath,
   numberToPos,
   prettifyUrl,
+  rolldownVersion,
   rollupVersion,
   timeFrom,
 } from '../utils'
@@ -178,6 +179,7 @@ class EnvironmentPluginContainer {
     this.minimalContext = {
       meta: {
         rollupVersion,
+        rolldownVersion,
         watchMode: true,
       },
       debug: noop,
@@ -341,6 +343,7 @@ class EnvironmentPluginContainer {
        */
       scan?: boolean
       isEntry?: boolean
+      kind?: 'import' | 'dynamic-import' | 'require-call'
     },
   ): Promise<PartialResolvedId | null> {
     if (!this._started) {
@@ -350,6 +353,7 @@ class EnvironmentPluginContainer {
     const skip = options?.skip
     const scan = !!options?.scan
     const ssr = this.environment.config.consumer === 'server'
+    const kind = options?.kind
     const ctx = new ResolveIdContext(this, skip, scan)
 
     const resolveStart = debugResolve ? performance.now() : 0
@@ -372,6 +376,7 @@ class EnvironmentPluginContainer {
           isEntry: !!options?.isEntry,
           ssr,
           scan,
+          kind,
         }),
       )
       if (!result) continue
@@ -447,7 +452,9 @@ class EnvironmentPluginContainer {
     },
   ): Promise<{ code: string; map: SourceMap | { mappings: '' } | null }> {
     const ssr = this.environment.config.consumer === 'server'
-    const optionsWithSSR = options ? { ...options, ssr } : { ssr }
+    const optionsWithSSR = options
+      ? { ...options, ssr, moduleType: 'js' }
+      : { ssr, moduleType: 'js' }
     const inMap = options?.inMap
 
     const ctx = new TransformPluginContext(this, id, code, inMap as SourceMap)
@@ -498,14 +505,14 @@ class EnvironmentPluginContainer {
   }
 
   async watchChange(
-    id: string,
-    change: { event: 'create' | 'update' | 'delete' },
+    _id: string,
+    _change: { event: 'create' | 'update' | 'delete' },
   ): Promise<void> {
-    await this.hookParallel(
-      'watchChange',
-      (plugin) => this._getPluginContext(plugin),
-      () => [id, change],
-    )
+    // await this.hookParallel(
+    //   'watchChange',
+    //   (plugin) => this._getPluginContext(plugin),
+    //   () => [id, change],
+    // )
   }
 
   async close(): Promise<void> {
@@ -918,7 +925,7 @@ class TransformPluginContext
         includeContent: true,
         hires: 'boundary',
         source: cleanUrl(this.filename),
-      })
+      }) as SourceMap
     }
     return map
   }

@@ -8,7 +8,7 @@ import type {
 } from 'esbuild'
 import { transform } from 'esbuild'
 import type { RawSourceMap } from '@ampproject/remapping'
-import type { InternalModuleFormat, SourceMap } from 'rollup'
+import type { InternalModuleFormat, SourceMap } from 'rolldown'
 import type { TSConfckParseResult } from 'tsconfck'
 import { TSConfckCache, TSConfckParseError, parse } from 'tsconfck'
 import {
@@ -335,9 +335,9 @@ export const buildEsbuildPlugin = (config: ResolvedConfig): Plugin => {
         const contentIndex =
           opts.format === 'iife'
             ? Math.max(esbuildCode.search(IIFE_BEGIN_RE), 0)
-            : opts.format === 'umd'
-              ? esbuildCode.indexOf(`(function(`) // same for minified or not
-              : 0
+            : // : opts.format === 'umd'
+              //   ? esbuildCode.indexOf(`(function(`) // same for minified or not
+              0
         if (contentIndex > 0) {
           const esbuildHelpers = esbuildCode.slice(0, contentIndex)
           res.code = esbuildCode

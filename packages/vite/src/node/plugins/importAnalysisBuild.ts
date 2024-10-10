@@ -5,9 +5,10 @@ import type {
   ImportSpecifier,
 } from 'es-module-lexer'
 import { init, parse as parseImports } from 'es-module-lexer'
-import type { SourceMap } from 'rollup'
+import type { SourceMap } from 'rolldown'
 import type { RawSourceMap } from '@ampproject/remapping'
 import convertSourceMap from 'convert-source-map'
+import { buildImportAnalysisPlugin as nativeBuildImportAnalysisPlugin } from 'rolldown/experimental'
 import {
   combineSourcemaps,
   generateCodeFrame,
@@ -21,6 +22,7 @@ import { genSourceMapUrl } from '../server/sourcemap'
 import type { Environment } from '../environment'
 import { removedPureCssFilesCache } from './css'
 import { createParseErrorInfo } from './importAnalysis'
+import { getChunkMetadata } from './metadata'
 
 type FileDep = {
   url: string
@@ -169,16 +171,43 @@ function preload(
 /**
  * Build only. During serve this is performed as part of ./importAnalysis.
  */
-export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
+export function buildImportAnalysisPlugin(config: ResolvedConfig): [Plugin] {
   const getInsertPreload = (environment: Environment) =>
     environment.config.consumer === 'client' &&
     !config.isWorker &&
     !config.build.lib
 
+  const enableNativePlugin = config.experimental.enableNativePlugin
   const renderBuiltUrl = config.experimental.renderBuiltUrl
   const isRelativeBase = config.base === './' || config.base === ''
 
-  return {
+  // TODO: make this environment-specific
+  const { modulePreload } = config.build // this.environment.config.build
+
+  const scriptRel =
+    modulePreload && modulePreload.polyfill
+      ? `'modulepreload'`
+      : `/* @__PURE__ */ (${detectScriptRel.toString()})()`
+
+  // There are two different cases for the preload list format in __vitePreload
+  //
+  // __vitePreload(() => import(asyncChunk), [ ...deps... ])
+  //
+  // This is maintained to keep backwards compatibility as some users developed plugins
+  // using regex over this list to workaround the fact that module preload wasn't
+  // configurable.
+  const assetsURL =
+    renderBuiltUrl || isRelativeBase
+      ? // If `experimental.renderBuiltUrl` is used, the dependencies might be relative to the current chunk.
+        // If relative base is used, the dependencies are relative to the current chunk.
+        // The importerUrl is passed as third parameter to __vitePreload in this case
+        `function(dep, importerUrl) { return new URL(dep, importerUrl).href }`
+      : // If the base isn't relative, then the deps are relative to the projects `outDir` and the base
+        // is appended inside __vitePreload too.
+        `function(dep) { return ${JSON.stringify(config.base)}+dep }`
+  const preloadCode = `const scriptRel = ${scriptRel};const assetsURL = ${assetsURL};const seen = {};export const ${preloadMethod} = ${preload.toString()}`
+
+  const jsPlugin = {
     name: 'vite:build-import-analysis',
     resolveId(id) {
       if (id === preloadHelperId) {
@@ -188,30 +217,6 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
 
     load(id) {
       if (id === preloadHelperId) {
-        const { modulePreload } = this.environment.config.build
-
-        const scriptRel =
-          modulePreload && modulePreload.polyfill
-            ? `'modulepreload'`
-            : `/* @__PURE__ */ (${detectScriptRel.toString()})()`
-
-        // There are two different cases for the preload list format in __vitePreload
-        //
-        // __vitePreload(() => import(asyncChunk), [ ...deps... ])
-        //
-        // This is maintained to keep backwards compatibility as some users developed plugins
-        // using regex over this list to workaround the fact that module preload wasn't
-        // configurable.
-        const assetsURL =
-          renderBuiltUrl || isRelativeBase
-            ? // If `experimental.renderBuiltUrl` is used, the dependencies might be relative to the current chunk.
-              // If relative base is used, the dependencies are relative to the current chunk.
-              // The importerUrl is passed as third parameter to __vitePreload in this case
-              `function(dep, importerUrl) { return new URL(dep, importerUrl).href }`
-            : // If the base isn't relative, then the deps are relative to the projects `outDir` and the base
-              // is appended inside __vitePreload too.
-              `function(dep) { return ${JSON.stringify(config.base)}+dep }`
-        const preloadCode = `const scriptRel = ${scriptRel};const assetsURL = ${assetsURL};const seen = {};export const ${preloadMethod} = ${preload.toString()}`
         return { code: preloadCode, moduleSideEffects: false }
       }
     },
@@ -544,7 +549,7 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
                       chunk.imports.forEach(addDeps)
                       // Ensure that the css imported by current chunk is loaded after the dependencies.
                       // So the style of current chunk won't be overwritten unexpectedly.
-                      chunk.viteMetadata!.importedCss.forEach((file) => {
+                      getChunkMetadata(chunk)!.importedCss.forEach((file) => {
                         deps.add(file)
                       })
                     }
@@ -553,8 +558,8 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
                       removedPureCssFilesCache.get(config)!
                     const chunk = removedPureCssFiles.get(filename)
                     if (chunk) {
-                      if (chunk.viteMetadata!.importedCss.size) {
-                        chunk.viteMetadata!.importedCss.forEach((file) => {
+                      if (getChunkMetadata(chunk)!.importedCss.size) {
+                        getChunkMetadata(chunk)!.importedCss.forEach((file) => {
                           deps.add(file)
                         })
                         hasRemovedPureCssChunk = true
@@ -696,7 +701,8 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
                 nextMap as RawSourceMap,
                 chunk.map as RawSourceMap,
               ]) as SourceMap
-              map.toUrl = () => genSourceMapUrl(map)
+              // TODO: rolldown's sourcemap type does not have toUrl function
+              // map.toUrl = () => genSourceMapUrl(map)
               chunk.map = map
 
               if (buildSourcemap === 'inline') {
@@ -716,5 +722,24 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): Plugin {
         }
       }
     },
+  } as Plugin
+  if (enableNativePlugin) {
+    delete jsPlugin.transform
+    delete jsPlugin.resolveId
+    delete jsPlugin.load
   }
+  return [
+    jsPlugin,
+    enableNativePlugin
+      ? nativeBuildImportAnalysisPlugin({
+          preloadCode: preloadCode,
+          // @ts-expect-error make this environment-specific
+          insertPreload: getInsertPreload({ config: { consumer: 'client' } }),
+          /// this field looks redundant, put a dummy value for now
+          optimizeModulePreloadRelativePaths: false,
+          renderBuiltUrl: Boolean(renderBuiltUrl),
+          isRelativeBase: isRelativeBase,
+        })
+      : null,
+  ].filter(Boolean) as [Plugin]
 }
