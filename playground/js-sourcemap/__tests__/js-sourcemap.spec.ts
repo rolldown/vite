@@ -82,7 +82,7 @@ if (!isBuild) {
     const map = extractSourcemap(js)
     expect(formatSourcemapForSnapshot(map)).toMatchInlineSnapshot(`
       {
-        "mappings": "AAAO,aAAM,MAAM;",
+        "mappings": "AAAA,OAAO,MAAM,MAAM",
         "sources": [
           "bar.ts",
         ],
@@ -103,7 +103,7 @@ if (!isBuild) {
     const map = extractSourcemap(multi)
     expect(formatSourcemapForSnapshot(map)).toMatchInlineSnapshot(`
       {
-        "mappings": "AACA;AAAA,EACE;AAAA,OACK;AAEP,QAAQ,IAAI,yBAAyB,GAAG;",
+        "mappings": "AACA,SACE,WACK,2BAA2B;AAElC,QAAQ,IAAI,yBAAyB,IAAI",
         "sources": [
           "with-multiline-import.ts",
         ],
@@ -177,7 +177,7 @@ describe.runIf(isBuild)('build tests', () => {
     const map = findAssetFile(/with-define-object.*\.js\.map/)
     expect(formatSourcemapForSnapshot(JSON.parse(map))).toMatchInlineSnapshot(`
       {
-        "mappings": "qBAEA,SAAS,GAAO,CACd,EAAA,CACF,CAEA,SAAS,GAAY,CAEnB,QAAQ,MAAM,qBAAsB,CAAA,CACtC,CAEA,EAAA",
+        "mappings": "qBAEA,SAAS,GAAO,CACd,EAAA,CACD,CAED,SAAS,GAAY,CAEnB,QAAQ,MAAM,qBAAsB,CAAA,CACrC,CAED,EAAA",
         "sources": [
           "../../with-define-object.ts",
         ],
