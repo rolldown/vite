@@ -15,11 +15,11 @@ import {
   isInNodeModules,
   numberToPos,
 } from '../utils'
-import type { Plugin } from '../plugin'
+import { type Plugin, perEnvironmentPlugin } from '../plugin'
 import type { ResolvedConfig } from '../config'
 import { toOutputFilePathInJS } from '../build'
 import { genSourceMapUrl } from '../server/sourcemap'
-import type { Environment } from '../environment'
+import type { PartialEnvironment } from '../baseEnvironment'
 import { removedPureCssFilesCache } from './css'
 import { createParseErrorInfo } from './importAnalysis'
 import { getChunkMetadata } from './metadata'
@@ -168,21 +168,12 @@ function preload(
   })
 }
 
-/**
- * Build only. During serve this is performed as part of ./importAnalysis.
- */
-export function buildImportAnalysisPlugin(config: ResolvedConfig): [Plugin] {
-  const getInsertPreload = (environment: Environment) =>
-    environment.config.consumer === 'client' &&
-    !config.isWorker &&
-    !config.build.lib
-
-  const enableNativePlugin = config.experimental.enableNativePlugin
-  const renderBuiltUrl = config.experimental.renderBuiltUrl
-  const isRelativeBase = config.base === './' || config.base === ''
-
-  // TODO: make this environment-specific
-  const { modulePreload } = config.build // this.environment.config.build
+function getPreloadCode(
+  environment: PartialEnvironment,
+  renderBuiltUrlBoolean: boolean,
+  isRelativeBase: boolean,
+) {
+  const { modulePreload } = environment.config.build
 
   const scriptRel =
     modulePreload && modulePreload.polyfill
@@ -197,15 +188,30 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): [Plugin] {
   // using regex over this list to workaround the fact that module preload wasn't
   // configurable.
   const assetsURL =
-    renderBuiltUrl || isRelativeBase
+    renderBuiltUrlBoolean || isRelativeBase
       ? // If `experimental.renderBuiltUrl` is used, the dependencies might be relative to the current chunk.
         // If relative base is used, the dependencies are relative to the current chunk.
         // The importerUrl is passed as third parameter to __vitePreload in this case
         `function(dep, importerUrl) { return new URL(dep, importerUrl).href }`
       : // If the base isn't relative, then the deps are relative to the projects `outDir` and the base
         // is appended inside __vitePreload too.
-        `function(dep) { return ${JSON.stringify(config.base)}+dep }`
+        `function(dep) { return ${JSON.stringify(environment.config.base)}+dep }`
   const preloadCode = `const scriptRel = ${scriptRel};const assetsURL = ${assetsURL};const seen = {};export const ${preloadMethod} = ${preload.toString()}`
+  return preloadCode
+}
+
+/**
+ * Build only. During serve this is performed as part of ./importAnalysis.
+ */
+export function buildImportAnalysisPlugin(config: ResolvedConfig): [Plugin] {
+  const getInsertPreload = (environment: PartialEnvironment) =>
+    environment.config.consumer === 'client' &&
+    !config.isWorker &&
+    !config.build.lib
+
+  const enableNativePlugin = config.experimental.enableNativePlugin
+  const renderBuiltUrl = config.experimental.renderBuiltUrl
+  const isRelativeBase = config.base === './' || config.base === ''
 
   const jsPlugin = {
     name: 'vite:build-import-analysis',
@@ -217,6 +223,11 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): [Plugin] {
 
     load(id) {
       if (id === preloadHelperId) {
+        const preloadCode = getPreloadCode(
+          this.environment,
+          !!renderBuiltUrl,
+          isRelativeBase,
+        )
         return { code: preloadCode, moduleSideEffects: false }
       }
     },
@@ -731,14 +742,20 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): [Plugin] {
   return [
     jsPlugin,
     enableNativePlugin
-      ? nativeBuildImportAnalysisPlugin({
-          preloadCode: preloadCode,
-          // @ts-expect-error make this environment-specific
-          insertPreload: getInsertPreload({ config: { consumer: 'client' } }),
-          /// this field looks redundant, put a dummy value for now
-          optimizeModulePreloadRelativePaths: false,
-          renderBuiltUrl: Boolean(renderBuiltUrl),
-          isRelativeBase: isRelativeBase,
+      ? perEnvironmentPlugin('native:import-analysis-build', (environment) => {
+          const preloadCode = getPreloadCode(
+            environment,
+            !!renderBuiltUrl,
+            isRelativeBase,
+          )
+          return nativeBuildImportAnalysisPlugin({
+            preloadCode,
+            insertPreload: getInsertPreload(environment),
+            // this field looks redundant, put a dummy value for now
+            optimizeModulePreloadRelativePaths: false,
+            renderBuiltUrl: !!renderBuiltUrl,
+            isRelativeBase,
+          }) as unknown as Plugin
         })
       : null,
   ].filter(Boolean) as [Plugin]
