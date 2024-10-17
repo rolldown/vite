@@ -99,6 +99,7 @@ const nodeConfig = defineConfig({
     'fsevents',
     'lightningcss',
     'rollup/parseAst',
+    'rolldown/experimental',
     ...Object.keys(pkg.dependencies),
   ],
   plugins: [

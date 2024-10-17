@@ -1,6 +1,6 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
-import type { OutputChunk } from 'rollup'
+import type { OutputChunk, RolldownPlugin } from 'rolldown'
 import type { ResolvedConfig } from '../config'
 import type { Plugin } from '../plugin'
 import { ENV_ENTRY, ENV_PUBLIC_PATH } from '../constants'
@@ -71,12 +71,12 @@ async function bundleWorkerEntry(
   }
 
   // bundle the file as entry to support imports
-  const { rollup } = await import('rollup')
+  const { rolldown } = await import('rolldown')
   const { plugins, rollupOptions, format } = config.worker
   const { plugins: resolvedPlugins, config: workerConfig } =
     await plugins(newBundleChain)
   const workerEnvironment = new BuildEnvironment('client', workerConfig) // TODO: should this be 'worker'?
-  const bundle = await rollup({
+  const bundle = await rolldown({
     ...rollupOptions,
     input,
     plugins: resolvedPlugins.map((p) =>
@@ -85,7 +85,12 @@ async function bundleWorkerEntry(
     onwarn(warning, warn) {
       onRollupWarning(warning, warn, workerEnvironment)
     },
-    preserveEntrySignatures: false,
+    // TODO: remove this and enable rolldown's CSS support later
+    moduleTypes: {
+      '.css': 'js',
+      ...rollupOptions.moduleTypes,
+    },
+    // preserveEntrySignatures: false,
   })
   let chunk: OutputChunk
   try {
@@ -143,7 +148,8 @@ function emitSourcemapForWorkerEntry(
       config.build.sourcemap === 'hidden' ||
       config.build.sourcemap === true
     ) {
-      const data = sourcemap.toString()
+      // TODO: rolldown does not support sourcemap.toString()
+      const data = JSON.stringify(sourcemap)
       const mapFileName = chunk.fileName + '.map'
       saveEmitWorkerAsset(config, {
         fileName: mapFileName,
@@ -192,29 +198,35 @@ export async function workerFileToUrl(
 export function webWorkerPostPlugin(): Plugin {
   return {
     name: 'vite:worker-post',
-    resolveImportMeta(property, { format }) {
-      // document is undefined in the worker, so we need to avoid it in iife
-      if (format === 'iife') {
-        // compiling import.meta
-        if (!property) {
-          // rollup only supports `url` property. we only support `url` property as well.
-          // https://github.com/rollup/rollup/blob/62b648e1cc6a1f00260bb85aa2050097bb4afd2b/src/ast/nodes/MetaProperty.ts#L164-L173
-          return `{
-            url: self.location.href
-          }`
-        }
-        // compiling import.meta.url
-        if (property === 'url') {
-          return 'self.location.href'
-        }
-      }
+    // TODO: resolveImportMeta is not supported yet, use transform hook for now
+    // resolveImportMeta(property, { format }) {
+    //   // document is undefined in the worker, so we need to avoid it in iife
+    //   if (format === 'iife') {
+    //     // compiling import.meta
+    //     if (!property) {
+    //       // rollup only supports `url` property. we only support `url` property as well.
+    //       // https://github.com/rollup/rollup/blob/62b648e1cc6a1f00260bb85aa2050097bb4afd2b/src/ast/nodes/MetaProperty.ts#L164-L173
+    //       return `{
+    //         url: self.location.href
+    //       }`
+    //     }
+    //     // compiling import.meta.url
+    //     if (property === 'url') {
+    //       return 'self.location.href'
+    //     }
+    //   }
 
-      return null
+    //   return null
+    // },
+    transform(code) {
+      if (code.includes('import.meta.url')) {
+        return code.replaceAll('import.meta.url', 'self.location.href')
+      }
     },
   }
 }
 
-export function webWorkerPlugin(config: ResolvedConfig): Plugin {
+export function webWorkerPlugin(config: ResolvedConfig): RolldownPlugin {
   const isBuild = config.command === 'build'
   const isWorker = config.isWorker
 
@@ -232,159 +244,173 @@ export function webWorkerPlugin(config: ResolvedConfig): Plugin {
       })
     },
 
-    load(id) {
-      if (isBuild && workerOrSharedWorkerRE.test(id)) {
-        return ''
-      }
+    load: {
+      filter: {
+        id: {
+          include: [workerOrSharedWorkerRE],
+        },
+      },
+      handler(id) {
+        if (isBuild && workerOrSharedWorkerRE.test(id)) {
+          return ''
+        }
+      },
     },
 
-    shouldTransformCachedModule({ id }) {
-      if (isBuild && config.build.watch && workerOrSharedWorkerRE.test(id)) {
-        return true
-      }
-    },
+    // shouldTransformCachedModule({ id }) {
+    //   if (isBuild && config.build.watch && workerOrSharedWorkerRE.test(id)) {
+    //     return true
+    //   }
+    // },
 
-    async transform(raw, id) {
-      const workerFileMatch = workerFileRE.exec(id)
-      if (workerFileMatch) {
-        // if import worker by worker constructor will have query.type
-        // other type will be import worker by esm
-        const workerType = workerFileMatch[1] as WorkerType
-        let injectEnv = ''
+    transform: {
+      filter: {
+        id: {
+          include: [workerOrSharedWorkerRE, workerFileRE],
+        },
+      },
+      async handler(raw, id) {
+        const workerFileMatch = workerFileRE.exec(id)
+        if (workerFileMatch) {
+          // if import worker by worker constructor will have query.type
+          // other type will be import worker by esm
+          const workerType = workerFileMatch[1] as WorkerType
+          let injectEnv = ''
 
-        const scriptPath = JSON.stringify(
-          path.posix.join(config.base, ENV_PUBLIC_PATH),
-        )
+          const scriptPath = JSON.stringify(
+            path.posix.join(config.base, ENV_PUBLIC_PATH),
+          )
 
-        if (workerType === 'classic') {
-          injectEnv = `importScripts(${scriptPath})\n`
-        } else if (workerType === 'module') {
-          injectEnv = `import ${scriptPath}\n`
-        } else if (workerType === 'ignore') {
-          if (isBuild) {
-            injectEnv = ''
-          } else {
-            // dynamic worker type we can't know how import the env
-            // so we copy /@vite/env code of server transform result into file header
-            const environment = this.environment
-            const moduleGraph =
-              environment.mode === 'dev' ? environment.moduleGraph : undefined
-            const module = moduleGraph?.getModuleById(ENV_ENTRY)
-            injectEnv = module?.transformResult?.code || ''
+          if (workerType === 'classic') {
+            injectEnv = `importScripts(${scriptPath})\n`
+          } else if (workerType === 'module') {
+            injectEnv = `import ${scriptPath}\n`
+          } else if (workerType === 'ignore') {
+            if (isBuild) {
+              injectEnv = ''
+            } else {
+              // dynamic worker type we can't know how import the env
+              // so we copy /@vite/env code of server transform result into file header
+              const environment = this.environment
+              const moduleGraph =
+                environment.mode === 'dev' ? environment.moduleGraph : undefined
+              const module = moduleGraph?.getModuleById(ENV_ENTRY)
+              injectEnv = module?.transformResult?.code || ''
+            }
           }
-        }
-        if (injectEnv) {
-          const s = new MagicString(raw)
-          s.prepend(injectEnv + ';\n')
-          return {
-            code: s.toString(),
-            map: s.generateMap({ hires: 'boundary' }),
+          if (injectEnv) {
+            const s = new MagicString(raw)
+            s.prepend(injectEnv + ';\n')
+            return {
+              code: s.toString(),
+              map: s.generateMap({ hires: 'boundary' }),
+            }
           }
+          return
         }
-        return
-      }
 
-      const workerMatch = workerOrSharedWorkerRE.exec(id)
-      if (!workerMatch) return
+        const workerMatch = workerOrSharedWorkerRE.exec(id)
+        if (!workerMatch) return
 
-      const { format } = config.worker
-      const workerConstructor =
-        workerMatch[1] === 'sharedworker' ? 'SharedWorker' : 'Worker'
-      const workerType = isBuild
-        ? format === 'es'
-          ? 'module'
-          : 'classic'
-        : 'module'
-      const workerTypeOption = `{
-        ${workerType === 'module' ? `type: "module",` : ''}
-        name: options?.name
-      }`
+        const { format } = config.worker
+        const workerConstructor =
+          workerMatch[1] === 'sharedworker' ? 'SharedWorker' : 'Worker'
+        const workerType = isBuild
+          ? format === 'es'
+            ? 'module'
+            : 'classic'
+          : 'module'
+        const workerTypeOption = `{
+          ${workerType === 'module' ? `type: "module",` : ''}
+          name: options?.name
+        }`
 
-      let urlCode: string
-      if (isBuild) {
-        if (isWorker && config.bundleChain.at(-1) === cleanUrl(id)) {
-          urlCode = 'self.location.href'
-        } else if (inlineRE.test(id)) {
-          const chunk = await bundleWorkerEntry(config, id)
-          const encodedJs = `const encodedJs = "${Buffer.from(
-            chunk.code,
-          ).toString('base64')}";`
+        let urlCode: string
+        if (isBuild) {
+          if (isWorker && config.bundleChain.at(-1) === cleanUrl(id)) {
+            urlCode = 'self.location.href'
+          } else if (inlineRE.test(id)) {
+            const chunk = await bundleWorkerEntry(config, id)
+            const encodedJs = `const encodedJs = "${Buffer.from(
+              chunk.code,
+            ).toString('base64')}";`
 
-          const code =
-            // Using blob URL for SharedWorker results in multiple instances of a same worker
-            workerConstructor === 'Worker'
-              ? `${encodedJs}
-          const decodeBase64 = (base64) => Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-          const blob = typeof self !== "undefined" && self.Blob && new Blob([${
-            workerType === 'classic'
-              ? ''
-              : // `URL` is always available, in `Worker[type="module"]`
-                `'URL.revokeObjectURL(import.meta.url);',`
-          }decodeBase64(encodedJs)], { type: "text/javascript;charset=utf-8" });
-          export default function WorkerWrapper(options) {
-            let objURL;
-            try {
-              objURL = blob && (self.URL || self.webkitURL).createObjectURL(blob);
-              if (!objURL) throw ''
-              const worker = new ${workerConstructor}(objURL, ${workerTypeOption});
-              worker.addEventListener("error", () => {
-                (self.URL || self.webkitURL).revokeObjectURL(objURL);
-              });
-              return worker;
-            } catch(e) {
+            const code =
+              // Using blob URL for SharedWorker results in multiple instances of a same worker
+              workerConstructor === 'Worker'
+                ? `${encodedJs}
+            const decodeBase64 = (base64) => Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+            const blob = typeof self !== "undefined" && self.Blob && new Blob([${
+              workerType === 'classic'
+                ? ''
+                : // `URL` is always available, in `Worker[type="module"]`
+                  `'URL.revokeObjectURL(import.meta.url);',`
+            }decodeBase64(encodedJs)], { type: "text/javascript;charset=utf-8" });
+            export default function WorkerWrapper(options) {
+              let objURL;
+              try {
+                objURL = blob && (self.URL || self.webkitURL).createObjectURL(blob);
+                if (!objURL) throw ''
+                const worker = new ${workerConstructor}(objURL, ${workerTypeOption});
+                worker.addEventListener("error", () => {
+                  (self.URL || self.webkitURL).revokeObjectURL(objURL);
+                });
+                return worker;
+              } catch(e) {
+                return new ${workerConstructor}(
+                  "data:text/javascript;base64," + encodedJs,
+                  ${workerTypeOption}
+                );
+              }${
+                // For module workers, we should not revoke the URL until the worker runs,
+                // otherwise the worker fails to run
+                workerType === 'classic'
+                  ? ` finally {
+                      objURL && (self.URL || self.webkitURL).revokeObjectURL(objURL);
+                    }`
+                  : ''
+              }
+            }`
+                : `${encodedJs}
+            export default function WorkerWrapper(options) {
               return new ${workerConstructor}(
                 "data:text/javascript;base64," + encodedJs,
                 ${workerTypeOption}
               );
-            }${
-              // For module workers, we should not revoke the URL until the worker runs,
-              // otherwise the worker fails to run
-              workerType === 'classic'
-                ? ` finally {
-                    objURL && (self.URL || self.webkitURL).revokeObjectURL(objURL);
-                  }`
-                : ''
             }
-          }`
-              : `${encodedJs}
-          export default function WorkerWrapper(options) {
-            return new ${workerConstructor}(
-              "data:text/javascript;base64," + encodedJs,
-              ${workerTypeOption}
-            );
-          }
-          `
+            `
 
-          return {
-            code,
-            // Empty sourcemap to suppress Rollup warning
-            map: { mappings: '' },
+            return {
+              code,
+              // Empty sourcemap to suppress Rollup warning
+              map: { mappings: '' },
+            }
+          } else {
+            urlCode = JSON.stringify(await workerFileToUrl(config, id))
           }
         } else {
-          urlCode = JSON.stringify(await workerFileToUrl(config, id))
+          let url = await fileToUrl(this, cleanUrl(id))
+          url = injectQuery(url, `${WORKER_FILE_ID}&type=${workerType}`)
+          urlCode = JSON.stringify(url)
         }
-      } else {
-        let url = await fileToUrl(this, cleanUrl(id))
-        url = injectQuery(url, `${WORKER_FILE_ID}&type=${workerType}`)
-        urlCode = JSON.stringify(url)
-      }
 
-      if (urlRE.test(id)) {
+        if (urlRE.test(id)) {
+          return {
+            code: `export default ${urlCode}`,
+            map: { mappings: '' }, // Empty sourcemap to suppress Rollup warning
+          }
+        }
+
         return {
-          code: `export default ${urlCode}`,
+          code: `export default function WorkerWrapper(options) {
+            return new ${workerConstructor}(
+              ${urlCode},
+              ${workerTypeOption}
+            );
+          }`,
           map: { mappings: '' }, // Empty sourcemap to suppress Rollup warning
         }
-      }
-
-      return {
-        code: `export default function WorkerWrapper(options) {
-          return new ${workerConstructor}(
-            ${urlCode},
-            ${workerTypeOption}
-          );
-        }`,
-        map: { mappings: '' }, // Empty sourcemap to suppress Rollup warning
-      }
+      },
     },
 
     renderChunk(code, chunk, outputOptions) {

@@ -1,4 +1,4 @@
-import type * as Rollup from 'rollup'
+import type * as Rollup from 'rolldown'
 
 export type { Rollup }
 export { parseAst, parseAstAsync } from 'rollup/parseAst'
@@ -17,6 +17,7 @@ export { createIdResolver } from './idResolver'
 
 export { formatPostcssSourceMap, preprocessCSS } from './plugins/css'
 export { transformWithEsbuild } from './plugins/esbuild'
+export { transformWithOxc } from './plugins/oxc'
 export { buildErrorMessage } from './server/middlewares/error'
 
 export { RemoteEnvironmentTransport } from './server/environmentTransport'

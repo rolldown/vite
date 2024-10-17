@@ -7,13 +7,13 @@ env:
 on:
   push:
     branches:
-      - main
+      - rolldown-v6
   issue_comment:
     types: [created]
 
 jobs:
   build:
-    if: github.repository == 'vitejs/vite' && (github.event_name == 'push' || github.event.issue.pull_request && startsWith(github.event.comment.body, '/pkg-pr-new'))
+    if: github.repository == 'rolldown/vite' && (github.event_name == 'push' || github.event.issue.pull_request && startsWith(github.event.comment.body, '/pkg-pr-new'))
     runs-on: ubuntu-latest
 
     steps:
@@ -68,4 +68,4 @@ jobs:
         working-directory: ./packages/vite
         run: pnpm build
 
-      - run: pnpm dlx pkg-pr-new@0.0 publish --compact --pnpm ./packages/vite
+      - run: pnpm dlx pkg-pr-new@0.0 publish --pnpm ./packages/vite

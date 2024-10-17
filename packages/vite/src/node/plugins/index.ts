@@ -1,14 +1,28 @@
 import aliasPlugin, { type ResolverFunction } from '@rollup/plugin-alias'
-import type { ObjectHook } from 'rollup'
+import type { ObjectHook } from 'rolldown'
+import {
+  aliasPlugin as nativeAliasPlugin,
+  dynamicImportVarsPlugin as nativeDynamicImportVarsPlugin,
+  importGlobPlugin as nativeImportGlobPlugin,
+  jsonPlugin as nativeJsonPlugin,
+  modulePreloadPolyfillPlugin as nativeModulePreloadPolyfillPlugin,
+  transformPlugin as nativeTransformPlugin,
+  wasmFallbackPlugin as nativeWasmFallbackPlugin,
+  wasmHelperPlugin as nativeWasmHelperPlugin,
+} from 'rolldown/experimental'
 import type { PluginHookUtils, ResolvedConfig } from '../config'
 import { isDepOptimizationDisabled } from '../optimizer'
-import type { HookHandler, Plugin, PluginWithRequiredHook } from '../plugin'
+import {
+  type HookHandler,
+  type Plugin,
+  type PluginWithRequiredHook,
+  createBuiltinPluginWithEnvironmentSupport,
+} from '../plugin'
 import { watchPackageDataPlugin } from '../packages'
 import { getFsUtils } from '../fsUtils'
 import { jsonPlugin } from './json'
-import { resolvePlugin } from './resolve'
+import { filteredResolvePlugin, resolvePlugin } from './resolve'
 import { optimizedDepsPlugin } from './optimizedDeps'
-import { esbuildPlugin } from './esbuild'
 import { importAnalysisPlugin } from './importAnalysis'
 import { cssAnalysisPlugin, cssPlugin, cssPostPlugin } from './css'
 import { assetPlugin } from './asset'
@@ -24,6 +38,7 @@ import { assetImportMetaUrlPlugin } from './assetImportMetaUrl'
 import { metadataPlugin } from './metadata'
 import { dynamicImportVarsPlugin } from './dynamicImportVars'
 import { importGlobPlugin } from './importMetaGlob'
+import { oxcPlugin } from './oxc'
 
 export async function resolvePlugins(
   config: ResolvedConfig,
@@ -42,60 +57,114 @@ export async function resolvePlugins(
     Object.values(config.environments).some(
       (environment) => !isDepOptimizationDisabled(environment.dev.optimizeDeps),
     )
+  const enableNativePlugin = config.experimental.enableNativePlugin
 
   return [
     depOptimizationEnabled ? optimizedDepsPlugin() : null,
     isBuild ? metadataPlugin() : null,
     !isWorker ? watchPackageDataPlugin(config.packageCache) : null,
-    preAliasPlugin(config),
-    aliasPlugin({
-      entries: config.resolve.alias,
-      customResolver: viteAliasCustomResolver,
-    }),
+    !isBuild ? preAliasPlugin(config) : null,
+    enableNativePlugin
+      ? nativeAliasPlugin({
+          entries: config.resolve.alias.map((item) => {
+            return {
+              find: item.find,
+              replacement: item.replacement,
+            }
+          }),
+        })
+      : aliasPlugin({
+          entries: config.resolve.alias,
+          customResolver: viteAliasCustomResolver,
+        }),
 
     ...prePlugins,
 
     modulePreload !== false && modulePreload.polyfill
-      ? modulePreloadPolyfillPlugin(config)
+      ? enableNativePlugin
+        ? createBuiltinPluginWithEnvironmentSupport(
+            'native:modulepreload-polyfill',
+            (environment) => {
+              if (
+                config.command !== 'build' ||
+                environment.config.consumer !== 'client'
+              )
+                return false
+              return nativeModulePreloadPolyfillPlugin({
+                skip: false,
+              })
+            },
+          )
+        : modulePreloadPolyfillPlugin(config)
       : null,
-    resolvePlugin(
-      {
-        root: config.root,
-        isProduction: config.isProduction,
-        isBuild,
-        packageCache: config.packageCache,
-        asSrc: true,
-        fsUtils: getFsUtils(config),
-        optimizeDeps: true,
-        externalize: isBuild && !!config.build.ssr, // TODO: should we do this for all environments?
-      },
-      config.environments,
-    ),
+    enableNativePlugin
+      ? filteredResolvePlugin(
+          {
+            root: config.root,
+            isProduction: config.isProduction,
+            isBuild,
+            packageCache: config.packageCache,
+            asSrc: true,
+            fsUtils: getFsUtils(config),
+            optimizeDeps: true,
+            externalize: isBuild && !!config.build.ssr, // TODO: should we do this for all environments?
+          },
+          config.environments,
+        )
+      : resolvePlugin(
+          {
+            root: config.root,
+            isProduction: config.isProduction,
+            isBuild,
+            packageCache: config.packageCache,
+            asSrc: true,
+            fsUtils: getFsUtils(config),
+            optimizeDeps: true,
+            externalize: isBuild && !!config.build.ssr, // TODO: should we do this for all environments?
+          },
+          config.environments,
+        ),
     htmlInlineProxyPlugin(config),
     cssPlugin(config),
-    config.esbuild !== false ? esbuildPlugin(config) : null,
-    jsonPlugin(
-      {
-        namedExports: true,
-        ...config.json,
-      },
-      isBuild,
-    ),
-    wasmHelperPlugin(),
+    config.oxc !== false
+      ? enableNativePlugin
+        ? nativeTransformPlugin()
+        : oxcPlugin(config)
+      : null,
+    enableNativePlugin
+      ? nativeJsonPlugin({
+          stringify: config.json?.stringify,
+          isBuild,
+        })
+      : jsonPlugin(
+          {
+            namedExports: true,
+            ...config.json,
+          },
+          isBuild,
+        ),
+    enableNativePlugin ? nativeWasmHelperPlugin() : wasmHelperPlugin(),
     webWorkerPlugin(config),
     assetPlugin(config),
 
     ...normalPlugins,
 
-    wasmFallbackPlugin(),
+    enableNativePlugin ? nativeWasmFallbackPlugin() : wasmFallbackPlugin(),
     definePlugin(config),
     cssPostPlugin(config),
     isBuild && buildHtmlPlugin(config),
     workerImportMetaUrlPlugin(config),
     assetImportMetaUrlPlugin(config),
     ...buildPlugins.pre,
-    dynamicImportVarsPlugin(config),
-    importGlobPlugin(config),
+    enableNativePlugin
+      ? nativeDynamicImportVarsPlugin()
+      : dynamicImportVarsPlugin(config),
+    enableNativePlugin
+      ? nativeImportGlobPlugin({
+          root: config.root,
+          restoreQueryExtension: config.experimental.importGlobRestoreExtension,
+        })
+      : importGlobPlugin(config),
 
     ...postPlugins,
 

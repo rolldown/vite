@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { assert, expect, test } from 'vitest'
-import type { SourceMap } from 'rollup'
+import type { SourceMap } from 'rolldown'
 import { transformWithEsbuild } from '../../plugins/esbuild'
 import { ssrTransform } from '../ssrTransform'
 

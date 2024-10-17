@@ -17,6 +17,7 @@ const external = [
   /^node:*/,
   /^vite\//,
   'rollup/parseAst',
+  'rolldown/experimental',
   ...Object.keys(pkg.dependencies),
   // lightningcss types are bundled
   ...Object.keys(pkg.devDependencies).filter((d) => d !== 'lightningcss'),
@@ -46,11 +47,15 @@ const identifierWithTrailingDollarRE = /\b(\w+)\$\d+\b/g
  * the module that imports the identifer as a named import alias
  */
 const identifierReplacements: Record<string, Record<string, string>> = {
-  rollup: {
-    Plugin$1: 'rollup.Plugin',
-    PluginContext$1: 'rollup.PluginContext',
-    TransformPluginContext$1: 'rollup.TransformPluginContext',
-    TransformResult$2: 'rollup.TransformResult',
+  rolldown: {
+    Plugin$1: 'rolldown.Plugin',
+    PluginContext$1: 'rolldown.PluginContext',
+    TransformPluginContext$1: 'rolldown.TransformPluginContext',
+    TransformResult$3: 'rolldown.TransformResult',
+  },
+  'rolldown/experimental': {
+    TransformOptions$2: 'rolldown_experimental_TransformOptions',
+    TransformResult$2: 'rolldown_experimental_TransformResult',
   },
   esbuild: {
     TransformResult$1: 'esbuild_TransformResult',
