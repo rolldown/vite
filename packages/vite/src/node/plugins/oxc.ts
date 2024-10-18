@@ -24,6 +24,8 @@ export interface OxcOptions extends OxcTransformOptions {
   include?: string | RegExp | ReadonlyArray<string | RegExp>
   exclude?: string | RegExp | ReadonlyArray<string | RegExp>
   jsxInject?: string
+  jsxInclude?: string | RegExp | ReadonlyArray<string | RegExp>
+  jsxExclude?: string | RegExp | ReadonlyArray<string | RegExp>
 }
 
 export async function transformWithOxc(
@@ -176,9 +178,26 @@ export async function transformWithOxc(
 
 export function oxcPlugin(config: ResolvedConfig): Plugin {
   const options = config.oxc as OxcOptions
-  const { jsxInject, include, exclude, ...oxcTransformOptions } = options
+  const {
+    jsxInject,
+    include,
+    exclude,
+    jsxInclude,
+    jsxExclude,
+    ...oxcTransformOptions
+  } = options
 
-  const filter = createFilter(include || /\.(m?ts|[jt]sx)$/, exclude || /\.js$/)
+  const defaultInclude = Array.isArray(include)
+    ? include
+    : [include || /\.(m?ts|[jt]sx)$/]
+  const filter = createFilter(
+    defaultInclude.concat(jsxInclude || []),
+    exclude || /\.js$/,
+  )
+  const jsxFilter = createFilter(
+    jsxInclude || /\.jsx$/,
+    jsxExclude || /\.(m?[jt]s|tsx)$/,
+  )
 
   let server: ViteDevServer
 
@@ -189,6 +208,20 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
     },
     async transform(code, id) {
       if (filter(id) || filter(cleanUrl(id))) {
+        // disable refresh at ssr
+        if (
+          this.environment.config.consumer === 'server' &&
+          oxcTransformOptions.jsx?.refresh
+        ) {
+          oxcTransformOptions.jsx.refresh = false
+        }
+        if (
+          (jsxFilter(id) || jsxFilter(cleanUrl(id))) &&
+          !oxcTransformOptions.lang
+        ) {
+          oxcTransformOptions.lang = 'jsx'
+        }
+
         const result = await transformWithOxc(
           this,
           code,
