@@ -56,9 +56,13 @@ export function jsonPlugin(
                 JSON.stringify(JSON.parse(json)),
               )})`,
               map: { mappings: '' },
+              moduleType: 'js', // TODO: remove later when not needed
             }
           } else {
-            return `export default JSON.parse(${JSON.stringify(json)})`
+            return {
+              code: `export default JSON.parse(${JSON.stringify(json)})`,
+              moduleType: 'js', // TODO: remove later when not needed
+            }
           }
         }
 
@@ -69,6 +73,7 @@ export function jsonPlugin(
             namedExports: options.namedExports,
           }),
           map: { mappings: '' },
+          moduleType: 'js', // TODO: remove later when not needed
         }
       } catch (e) {
         const position = extractJsonErrorPosition(e.message, json.length)

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import colors from 'picocolors'
-import type { PartialResolvedId } from 'rollup'
+import type { PartialResolvedId, RolldownPlugin } from 'rolldown'
 import { exports, imports } from 'resolve.exports'
 import { hasESMSyntax } from 'mlly'
 import type { Plugin } from '../plugin'
@@ -181,6 +181,41 @@ export interface ResolvePluginOptionsWithOverrides
   extends ResolveOptions,
     ResolvePluginOptions {}
 
+export function filteredResolvePlugin(
+  resolveOptions: ResolvePluginOptionsWithOverrides,
+  environmentsOptions?: Record<string, ResolvedEnvironmentOptions>,
+): RolldownPlugin {
+  const originalPlugin = resolvePlugin(resolveOptions, environmentsOptions)
+
+  return {
+    name: 'vite:resolve',
+    options(option) {
+      option.resolve ??= {}
+      option.resolve.extensions = this.environment.config.resolve.extensions
+      option.resolve.extensionAlias = {
+        '.js': ['.ts', '.tsx', '.js'],
+        '.jsx': ['.ts', '.tsx', '.jsx'],
+        '.mjs': ['.mts', '.mjs'],
+        '.cjs': ['.cts', '.cjs'],
+      }
+    },
+    resolveId: {
+      filter: {
+        id: {
+          exclude: [
+            // relative paths without query
+            /^\.\.?[/\\][^?]+$/,
+            /^(?:\0|\/?virtual:)/,
+          ],
+        },
+      },
+      // @ts-expect-error the options is incompatible
+      handler: originalPlugin.resolveId!,
+    },
+    load: originalPlugin.load,
+  }
+}
+
 export function resolvePlugin(
   resolveOptions: ResolvePluginOptionsWithOverrides,
   /**
@@ -191,7 +226,13 @@ export function resolvePlugin(
    */
   environmentsOptions?: Record<string, ResolvedEnvironmentOptions>,
 ): Plugin {
-  const { root, isProduction, asSrc, preferRelative = false } = resolveOptions
+  const {
+    root,
+    isProduction,
+    isBuild,
+    asSrc,
+    preferRelative = false,
+  } = resolveOptions
 
   // In unix systems, absolute paths inside root first needs to be checked as an
   // absolute URL (/root/root/path-to-file) resulting in failed checks before falling
@@ -226,9 +267,7 @@ export function resolvePlugin(
         return id
       }
 
-      // this is passed by @rollup/plugin-commonjs
-      const isRequire: boolean =
-        resolveOpts?.custom?.['node-resolve']?.isRequire ?? false
+      const isRequire: boolean = resolveOpts.kind === 'require-call'
 
       const environmentName = this.environment.name ?? (ssr ? 'ssr' : 'client')
       const currentEnvironmentOptions =
@@ -505,16 +544,41 @@ export function resolvePlugin(
 
     load(id) {
       if (id.startsWith(browserExternalId)) {
-        if (isProduction) {
-          return `export default {}`
+        if (isBuild) {
+          if (isProduction) {
+            // rolldown treats missing export as an error, and will break build.
+            // So use cjs to avoid it.
+            return `module.exports = {}`
+          } else {
+            id = id.slice(browserExternalId.length + 1)
+            // rolldown uses esbuild interop helper, so copy the proxy module from https://github.com/vitejs/vite/blob/main/packages/vite/src/node/optimizer/esbuildDepPlugin.ts#L259
+            return `\
+module.exports = Object.create(new Proxy({}, {
+  get(_, key) {
+    if (
+      key !== '__esModule' &&
+      key !== '__proto__' &&
+      key !== 'constructor' &&
+      key !== 'splice'
+    ) {
+      throw new Error(\`Module "${id}" has been externalized for browser compatibility. Cannot access "${id}.\${key}" in client code.  See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.\`)
+    }
+  }
+  }))`
+          }
         } else {
-          id = id.slice(browserExternalId.length + 1)
-          return `\
+          // in dev, needs to return esm
+          if (isProduction) {
+            return `export default {}`
+          } else {
+            id = id.slice(browserExternalId.length + 1)
+            return `\
 export default new Proxy({}, {
   get(_, key) {
     throw new Error(\`Module "${id}" has been externalized for browser compatibility. Cannot access "${id}.\${key}" in client code.  See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.\`)
   }
 })`
+          }
         }
       }
       if (id.startsWith(optionalPeerDepId)) {

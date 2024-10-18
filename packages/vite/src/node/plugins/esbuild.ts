@@ -8,7 +8,7 @@ import type {
 } from 'esbuild'
 import { transform } from 'esbuild'
 import type { RawSourceMap } from '@ampproject/remapping'
-import type { InternalModuleFormat, SourceMap } from 'rollup'
+import type { InternalModuleFormat, SourceMap } from 'rolldown'
 import type { TSConfckParseResult } from 'tsconfck'
 import { TSConfckCache, TSConfckParseError, parse } from 'tsconfck'
 import {
@@ -43,7 +43,11 @@ export const defaultEsbuildSupported = {
 
 // TODO: rework to avoid caching the server for this module.
 // If two servers are created in the same process, they will interfere with each other.
-let server: ViteDevServer
+let server: ViteDevServer | null
+
+export function setServer(s: ViteDevServer | null): void {
+  server = s
+}
 
 export interface ESBuildOptions extends TransformOptions {
   include?: string | RegExp | string[] | RegExp[]
@@ -253,8 +257,8 @@ export function esbuildPlugin(config: ResolvedConfig): Plugin {
 
   return {
     name: 'vite:esbuild',
-    configureServer(_server) {
-      server = _server
+    configureServer(server) {
+      setServer(server)
       server.watcher
         .on('add', reloadOnTsconfigChange)
         .on('change', reloadOnTsconfigChange)
@@ -262,7 +266,7 @@ export function esbuildPlugin(config: ResolvedConfig): Plugin {
     },
     buildEnd() {
       // recycle serve to avoid preventing Node self-exit (#6815)
-      server = null as any
+      setServer(null)
     },
     async transform(code, id) {
       if (filter(id) || filter(cleanUrl(id))) {
@@ -335,9 +339,9 @@ export const buildEsbuildPlugin = (config: ResolvedConfig): Plugin => {
         const contentIndex =
           opts.format === 'iife'
             ? Math.max(esbuildCode.search(IIFE_BEGIN_RE), 0)
-            : opts.format === 'umd'
-              ? esbuildCode.indexOf(`(function(`) // same for minified or not
-              : 0
+            : // : opts.format === 'umd'
+              //   ? esbuildCode.indexOf(`(function(`) // same for minified or not
+              0
         if (contentIndex > 0) {
           const esbuildHelpers = esbuildCode.slice(0, contentIndex)
           res.code = esbuildCode
@@ -477,7 +481,9 @@ export async function loadTsconfigJsonForFile(
   }
 }
 
-async function reloadOnTsconfigChange(changedFile: string) {
+export async function reloadOnTsconfigChange(
+  changedFile: string,
+): Promise<void> {
   // server could be closed externally after a file change is detected
   if (!server) return
   // any tsconfig.json that's added in the workspace could be closer to a code file than a previously cached one
