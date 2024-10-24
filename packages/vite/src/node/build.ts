@@ -1329,10 +1329,10 @@ const relativeUrlMechanisms: Record<
   //   getResolveUrl(
   //     `'${escapeId(partialEncodeURIPath(relativePath))}', module.meta.url`,
   //   ),
-  // umd: (relativePath) =>
-  //   `(typeof document === 'undefined' && typeof location === 'undefined' ? ${getFileUrlFromRelativePath(
-  //     relativePath,
-  //   )} : ${getRelativeUrlFromDocument(relativePath, true)})`,
+  umd: (relativePath) =>
+    `(typeof document === 'undefined' && typeof location === 'undefined' ? ${getFileUrlFromRelativePath(
+      relativePath,
+    )} : ${getRelativeUrlFromDocument(relativePath, true)})`,
 }
 /* end of copy */
 
