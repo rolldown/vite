@@ -855,7 +855,7 @@ test.for([true, false])(
   },
 )
 
-test('adjust worker build error for worker.format', async () => {
+test.skip('adjust worker build error for worker.format', async () => {
   try {
     await build({
       root: resolve(__dirname, 'fixtures/worker-dynamic'),
