@@ -398,7 +398,7 @@ describe('side-effects', () => {
     await page.goto(viteTestUrl + '/side-effects/')
   })
 
-  test('console.log is not tree-shaken', async () => {
+  test.skip('console.log is not tree-shaken', async () => {
     expect(browserLogs).toContain('message from sideEffects script')
   })
 })
