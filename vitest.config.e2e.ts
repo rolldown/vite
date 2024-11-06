@@ -17,7 +17,6 @@ export default defineConfig({
       './playground/legacy/**/*.spec.[tj]s', // system format
       ...(isBuild
         ? [
-            './playground/backend-integration/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2392
             './playground/environment-react-ssr/**/*.spec.[tj]s', // needs investigation
             './playground/external/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2041
             './playground/lib/**/*.spec.[tj]s', // umd format
