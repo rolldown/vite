@@ -198,7 +198,8 @@ export function workerImportMetaUrlPlugin(
               s.update(
                 expStart,
                 expEnd,
-                `new URL(/* @vite-ignore */ ${JSON.stringify(builtUrl)}, import.meta.url)`,
+                // NOTE: add `'' +` to opt-out rolldown's transform: https://github.com/rolldown/rolldown/issues/2745
+                `new URL(/* @vite-ignore */ ${JSON.stringify(builtUrl)}, '' + import.meta.url)`,
               )
             }
           }

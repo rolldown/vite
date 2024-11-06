@@ -19,7 +19,6 @@ export default defineConfig({
         ? [
             './playground/backend-integration/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2392
             './playground/environment-react-ssr/**/*.spec.[tj]s', // needs investigation
-            './playground/dynamic-import/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/1843
             './playground/external/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2041
             './playground/lib/**/*.spec.[tj]s', // umd format
             './playground/object-hooks/**/*.spec.[tj]s', // object hook sequential

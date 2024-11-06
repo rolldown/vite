@@ -649,11 +649,7 @@ export function cssPostPlugin(config: ResolvedConfig): RolldownPlugin {
       let chunkCSS = ''
       // the chunk is empty if it's a dynamic entry chunk that only contains a CSS import
       const isJsChunkEmpty = code === '' && !chunk.isEntry
-      // NOTE: use this instead of "chunk.exports.length === 0" because of https://github.com/rolldown/rolldown/issues/2395
-      let isPureCssChunk =
-        opts.format === 'es'
-          ? !/export\s+/.test(code)
-          : !/exports(?:\.\w|\[)/.test(code)
+      let isPureCssChunk = chunk.exports.length === 0
       const ids = Object.keys(chunk.modules)
       for (const id of ids) {
         if (styles.has(id)) {
