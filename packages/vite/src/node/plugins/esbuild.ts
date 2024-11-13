@@ -360,9 +360,9 @@ export const buildEsbuildPlugin = (): Plugin => {
         const contentIndex =
           opts.format === 'iife'
             ? Math.max(esbuildCode.search(IIFE_BEGIN_RE), 0)
-            : // : opts.format === 'umd'
-              //   ? esbuildCode.indexOf(`(function(`) // same for minified or not
-              0
+            : opts.format === 'umd'
+              ? esbuildCode.indexOf(`(function(`) // same for minified or not
+              : 0
         if (contentIndex > 0) {
           const esbuildHelpers = esbuildCode.slice(0, contentIndex)
           res.code = esbuildCode
