@@ -520,14 +520,14 @@ class EnvironmentPluginContainer {
   }
 
   async watchChange(
-    _id: string,
-    _change: { event: 'create' | 'update' | 'delete' },
+    id: string,
+    change: { event: 'create' | 'update' | 'delete' },
   ): Promise<void> {
-    // await this.hookParallel(
-    //   'watchChange',
-    //   (plugin) => this._getPluginContext(plugin),
-    //   () => [id, change],
-    // )
+    await this.hookParallel(
+      'watchChange',
+      (plugin) => this._getPluginContext(plugin),
+      () => [id, change],
+    )
   }
 
   async close(): Promise<void> {
