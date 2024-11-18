@@ -8,6 +8,7 @@ import type {
   Logger,
   PluginOption,
   ResolvedConfig,
+  RollupWatcher,
   UserConfig,
   ViteDevServer,
 } from 'vite'
@@ -20,7 +21,7 @@ import {
   preview,
 } from 'vite'
 import type { Browser, Page } from 'playwright-chromium'
-import type { RollupError, RollupWatcher, RollupWatcherEvent } from 'rollup'
+import type { RollupError, RollupWatcherEvent } from 'rollup'
 import type { RunnerTestFile } from 'vitest'
 import { beforeAll, inject } from 'vitest'
 
@@ -72,7 +73,7 @@ export let resolvedConfig: ResolvedConfig = undefined!
 export let page: Page = undefined!
 export let browser: Browser = undefined!
 export let viteTestUrl: string = ''
-export const watcher: RollupWatcher | undefined = undefined
+export let watcher: RollupWatcher | undefined = undefined
 
 export function setViteUrl(url: string): void {
   viteTestUrl = url
@@ -273,13 +274,14 @@ export async function startDefaultServe(): Promise<void> {
       const builder = await createBuilder(buildConfig)
       await builder.buildApp()
     } else {
-      /* const rollupOutput = */ await build(buildConfig)
-      // const isWatch = !!resolvedConfig!.build.watch
-      // // in build watch,call startStaticServer after the build is complete
-      // if (isWatch) {
-      //   watcher = rollupOutput as RollupWatcher
-      //   await notifyRebuildComplete(watcher)
-      // }
+      const rollupOutput = await build(buildConfig)
+      const isWatch = !!resolvedConfig!.build.watch
+      // in build watch,call startStaticServer after the build is complete
+      if (isWatch) {
+        watcher = rollupOutput as RollupWatcher
+        await notifyRebuildComplete(watcher)
+        await new Promise<void>((resolve) => setTimeout(resolve, 1000))
+      }
       if (buildConfig.__test__) {
         buildConfig.__test__()
       }
@@ -315,7 +317,10 @@ export async function notifyRebuildComplete(
   await new Promise<void>((resolve) => {
     resolveFn = resolve
   })
-  return watcher.off('event', callback)
+  // During tests we edit the files too fast and sometimes chokidar
+  // misses change events, so wait 100ms for consistency
+  await new Promise<void>((resolve) => setTimeout(resolve, 100))
+  return watcher // watcher.off('event', callback)
 }
 
 export function createInMemoryLogger(logs: string[]): Logger {
