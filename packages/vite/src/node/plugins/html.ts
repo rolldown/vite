@@ -492,25 +492,25 @@ export function buildHtmlPlugin(config: ResolvedConfig): RolldownPlugin {
                 if (isModule) {
                   inlineModuleIndex++
                   if (url && !isExcludedUrl(url) && !isPublicFile) {
-                    // FIXME: rolldown does not support `this.load`: https://github.com/rolldown/rolldown/issues/2355
-                    // setModuleSideEffectPromises.push(
-                    //   this.resolve(url, id).then((resolved) => {
-                    //     if (!resolved) {
-                    //       return Promise.reject(
-                    //         new Error(`Failed to resolve ${url} from ${id}`),
-                    //       )
-                    //     }
-                    //     // set moduleSideEffects to keep the module even if `treeshake.moduleSideEffects=false` is set
-                    //     const moduleInfo = this.getModuleInfo(resolved.id)
-                    //     if (moduleInfo) {
-                    //       moduleInfo.moduleSideEffects = true
-                    //     } else if (!resolved.external) {
-                    //       return this.load(resolved).then((mod) => {
-                    //         mod.moduleSideEffects = true
-                    //       })
-                    //     }
-                    //   }),
-                    // )
+                    setModuleSideEffectPromises.push(
+                      this.resolve(url, id).then((resolved) => {
+                        if (!resolved) {
+                          return Promise.reject(
+                            new Error(`Failed to resolve ${url} from ${id}`),
+                          )
+                        }
+                        // set moduleSideEffects to keep the module even if `treeshake.moduleSideEffects=false` is set
+                        const moduleInfo = this.getModuleInfo(resolved.id)
+                        if (moduleInfo) {
+                          moduleInfo.moduleSideEffects = true
+                        } else if (!resolved.external) {
+                          return this.load({
+                            ...resolved,
+                            moduleSideEffects: true,
+                          }).then(() => {})
+                        }
+                      }),
+                    )
                     // <script type="module" src="..."/>
                     // add it as an import
                     js += `\nimport ${JSON.stringify(url)}`
