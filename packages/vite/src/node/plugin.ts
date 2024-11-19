@@ -350,8 +350,18 @@ export type PluginOption = Thenable<Plugin | FalsyPlugin | PluginOption[]>
 export async function resolveEnvironmentPlugins(
   environment: PartialEnvironment,
 ): Promise<Plugin[]> {
+  return resolveEnvironmentPluginsRaw(
+    environment.getTopLevelConfig().plugins,
+    environment,
+  )
+}
+
+export async function resolveEnvironmentPluginsRaw(
+  plugins: readonly Plugin[],
+  environment: PartialEnvironment,
+): Promise<Plugin[]> {
   const environmentPlugins: Plugin[] = []
-  for (const plugin of environment.getTopLevelConfig().plugins) {
+  for (const plugin of plugins) {
     if (plugin.applyToEnvironment) {
       const applied = await plugin.applyToEnvironment(environment)
       if (!applied) {
