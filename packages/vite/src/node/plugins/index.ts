@@ -20,7 +20,7 @@ import {
 } from '../plugin'
 import { watchPackageDataPlugin } from '../packages'
 import { jsonPlugin } from './json'
-import { filteredResolvePlugin, resolvePlugin } from './resolve'
+import { oxcResolvePlugin, resolvePlugin } from './resolve'
 import { optimizedDepsPlugin } from './optimizedDeps'
 import { importAnalysisPlugin } from './importAnalysis'
 import { cssAnalysisPlugin, cssPlugin, cssPostPlugin } from './css'
@@ -96,25 +96,30 @@ export async function resolvePlugins(
           )
         : modulePreloadPolyfillPlugin(config)
       : null,
-    enableNativePlugin
-      ? filteredResolvePlugin({
-          root: config.root,
-          isProduction: config.isProduction,
-          isBuild,
-          packageCache: config.packageCache,
-          asSrc: true,
-          optimizeDeps: true,
-          externalize: true,
-        })
-      : resolvePlugin({
-          root: config.root,
-          isProduction: config.isProduction,
-          isBuild,
-          packageCache: config.packageCache,
-          asSrc: true,
-          optimizeDeps: true,
-          externalize: true,
-        }),
+    ...(enableNativePlugin
+      ? oxcResolvePlugin(
+          {
+            root: config.root,
+            isProduction: config.isProduction,
+            isBuild,
+            packageCache: config.packageCache,
+            asSrc: true,
+            optimizeDeps: true,
+            externalize: true,
+          },
+          isWorker ? config : undefined,
+        )
+      : [
+          resolvePlugin({
+            root: config.root,
+            isProduction: config.isProduction,
+            isBuild,
+            packageCache: config.packageCache,
+            asSrc: true,
+            optimizeDeps: true,
+            externalize: true,
+          }),
+        ]),
     htmlInlineProxyPlugin(config),
     cssPlugin(config),
     config.oxc !== false

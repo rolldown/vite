@@ -61,6 +61,7 @@ export function createIdResolver(
         [
           // @ts-expect-error  the aliasPlugin uses rollup types
           aliasPlugin({ entries: environment.config.resolve.alias }),
+          // TODO: use oxcResolvePlugin here as well
           resolvePlugin({
             root: config.root,
             isProduction: config.isProduction,
