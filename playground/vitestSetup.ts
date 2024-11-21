@@ -280,7 +280,6 @@ export async function startDefaultServe(): Promise<void> {
       if (isWatch) {
         watcher = rollupOutput as RollupWatcher
         await notifyRebuildComplete(watcher)
-        await new Promise<void>((resolve) => setTimeout(resolve, 1000))
       }
       if (buildConfig.__test__) {
         buildConfig.__test__()
