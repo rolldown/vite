@@ -47,6 +47,11 @@ export default defineConfig((env) => ({
           input: {
             index: '/src/entry-server',
           },
+          output: {
+            // NOTE: needed for now: https://github.com/rolldown/rolldown/issues/2685
+            banner:
+              "import { createRequire as ___createRequire } from 'module'; const require = ___createRequire(import.meta.url);",
+          },
         },
       },
     },
