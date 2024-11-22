@@ -641,7 +641,19 @@ async function buildEnvironment(
     // TODO: remove this and enable rolldown's CSS support later
     moduleTypes: {
       ...options.rollupOptions.moduleTypes,
-      '.css': 'js',
+      // https://github.com/rolldown/rolldown/blob/4020de442a8ab0f7973794ead3b8aa04e316d558/crates/rolldown/src/module_loader/module_task.rs#L120
+      // @ts-expect-error css
+      '.sass': 'css',
+      // @ts-expect-error css
+      '.scss': 'css',
+      // @ts-expect-error css
+      '.sss': 'css',
+      // @ts-expect-error css
+      '.styl': 'css',
+      // @ts-expect-error css
+      '.stylus': 'css',
+      // @ts-expect-error css
+      '.less': 'css',
     },
   }
 

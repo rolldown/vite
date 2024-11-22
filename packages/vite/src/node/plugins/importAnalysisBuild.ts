@@ -232,7 +232,8 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): [Plugin] {
       }
     },
 
-    async transform(source, importer) {
+    async transform(source, importer, opts) {
+      if (opts?.moduleType === 'css') return
       if (isInNodeModules(importer) && !dynamicImportPrefixRE.test(source)) {
         return
       }
