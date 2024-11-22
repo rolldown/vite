@@ -96,7 +96,9 @@ export async function transformWithOxc(
           resolvedOptions.jsx.runtime = 'automatic'
           break
         case 'preserve':
-          ctx.warn('The tsconfig jsx preserve is not supported by oxc')
+          if (lang === 'tsx') {
+            ctx.warn('The tsconfig jsx preserve is not supported by oxc')
+          }
           break
         default:
           break
@@ -287,9 +289,7 @@ export function convertEsbuildConfigToOxcConfig(
     oxcOptions.jsx!.importSource = esbuildTransformOptions.jsxImportSource
   }
   if (esbuildTransformOptions.loader) {
-    if (
-      ['.js', '.jsx', '.ts', 'tsx'].includes(esbuildTransformOptions.loader)
-    ) {
+    if (['js', 'jsx', 'ts', 'tsx'].includes(esbuildTransformOptions.loader)) {
       oxcOptions.lang = esbuildTransformOptions.loader as
         | 'js'
         | 'jsx'
@@ -310,7 +310,12 @@ export function convertEsbuildConfigToOxcConfig(
     case false:
       oxcOptions.sourcemap = esbuildTransformOptions.sourcemap
       break
-
+    case 'external':
+      oxcOptions.sourcemap = true
+      break
+    // ignore it because it's not supported by esbuild `transform`
+    case 'linked':
+      break
     default:
       logger.warn(
         `The esbuild sourcemap ${esbuildTransformOptions.sourcemap} is not supported by oxc`,
