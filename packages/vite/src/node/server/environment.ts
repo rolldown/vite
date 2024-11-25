@@ -2,10 +2,6 @@ import type { FetchFunctionOptions, FetchResult } from 'vite/module-runner'
 import type { FSWatcher } from 'dep-types/chokidar'
 import colors from 'picocolors'
 import {
-  isCallableCompatibleBuiltinPlugin,
-  makeBuiltinPluginCallable,
-} from 'rolldown/experimental'
-import {
   BaseEnvironment,
   getDefaultResolvedEnvironmentOptions,
 } from '../baseEnvironment'
@@ -172,11 +168,7 @@ export class DevEnvironment extends BaseEnvironment {
       return
     }
     this._initiated = true
-    this._plugins = (await resolveEnvironmentPlugins(this)).map((plugin) =>
-      isCallableCompatibleBuiltinPlugin(plugin)
-        ? makeBuiltinPluginCallable(plugin)
-        : plugin,
-    )
+    this._plugins = await resolveEnvironmentPlugins(this)
     this._pluginContainer = await createEnvironmentPluginContainer(
       this,
       this._plugins,
