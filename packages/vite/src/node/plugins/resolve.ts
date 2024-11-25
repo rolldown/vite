@@ -245,10 +245,11 @@ export function oxcResolvePlugin(
             isProduction: options.isProduction,
             asSrc: options.asSrc ?? false,
             preferRelative: options.preferRelative ?? false,
+            isRequire: options.isRequire,
             root: options.root,
             scan: options.scan ?? false,
 
-            mainFields: options.mainFields,
+            mainFields: options.mainFields.concat(['main']),
             conditions: options.conditions,
             externalConditions: options.externalConditions,
             extensions: options.extensions,
