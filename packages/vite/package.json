@@ -87,7 +87,7 @@
   "dependencies": {
     "esbuild": "^0.24.2",
     "postcss": "^8.4.49",
-    "rolldown": "0.14.0-snapshot-db4090b-20241123003628",
+    "rolldown": "0.14.0-snapshot-11a6693-20241126041222",
     "rollup": "^4.23.0"
   },
   "optionalDependencies": {
