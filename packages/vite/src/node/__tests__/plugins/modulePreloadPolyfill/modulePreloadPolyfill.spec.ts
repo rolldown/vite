@@ -37,8 +37,7 @@ const buildProject = ({ format = 'es' as ModuleFormat } = {}) =>
   }) as Promise<RollupOutput>
 
 describe('load', () => {
-  // NOTE: due to https://github.com/rolldown/rolldown/issues/2828
-  it.skip('loads modulepreload polyfill', async ({ expect }) => {
+  it('loads modulepreload polyfill', async ({ expect }) => {
     const { output } = await buildProject()
     expect(output).toHaveLength(1)
     expect(output[0].code).toMatchSnapshot()
