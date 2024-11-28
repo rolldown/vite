@@ -62,10 +62,6 @@ import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import MagicString from 'magic-string'
 import type { FSWatcher } from 'dep-types/chokidar'
 import colors from 'picocolors'
-import {
-  isCallableCompatibleBuiltinPlugin,
-  makeBuiltinPluginCallable,
-} from 'rolldown/experimental'
 import type { Plugin } from '../plugin'
 import {
   combineSourcemaps,
@@ -142,11 +138,7 @@ export async function createEnvironmentPluginContainer(
 ): Promise<EnvironmentPluginContainer> {
   const container = new EnvironmentPluginContainer(
     environment,
-    plugins.map((plugin) =>
-      isCallableCompatibleBuiltinPlugin(plugin)
-        ? makeBuiltinPluginCallable(plugin)
-        : plugin,
-    ),
+    plugins,
     watcher,
   )
   await container.resolveRollupOptions()

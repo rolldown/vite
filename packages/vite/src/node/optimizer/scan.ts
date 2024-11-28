@@ -276,7 +276,7 @@ async function prepareRolldownScanner(
   const { plugins: pluginsFromConfig = [], ...rollupOptions } =
     environment.config.optimizeDeps.rollupOptions ?? {}
 
-  const plugins = await asyncFlatten(pluginsFromConfig)
+  const plugins = await asyncFlatten(arraify(pluginsFromConfig))
 
   plugins.push(rolldownScanPlugin(environment, deps, missing, entries))
 
