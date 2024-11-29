@@ -32,7 +32,6 @@ import { transformWithEsbuild } from '../plugins/esbuild'
 import { METADATA_FILENAME } from '../constants'
 import { isWindows } from '../../shared/utils'
 import type { Environment } from '../environment'
-import { transformWithOxc } from '../plugins/oxc'
 import { ScanEnvironment, scanImports } from './scan'
 import { createOptimizeDepsIncludeResolver, expandGlobIds } from './resolve'
 import {
@@ -769,22 +768,7 @@ async function prepareRolldownOptimizerRun(
   if (external.length) {
     plugins.push(rolldownCjsExternalPlugin(external, platform))
   }
-  plugins.push(rolldownDepPlugin(environment, flatIdDeps, external))
-  plugins.push({
-    name: 'optimizer-transform',
-    async transform(code, id) {
-      if (/\.(?:m?[jt]s|[jt]sx)$/.test(id)) {
-        const result = await transformWithOxc(this, code, id, {
-          sourcemap: true,
-          lang: jsxLoader && /\.js$/.test(id) ? 'jsx' : undefined,
-        })
-        return {
-          code: result.code,
-          map: result.map,
-        }
-      }
-    },
-  })
+  plugins.push(...rolldownDepPlugin(environment, flatIdDeps, external))
 
   let canceled = false
   async function build() {
@@ -806,6 +790,7 @@ async function prepareRolldownOptimizerRun(
       moduleTypes: {
         '.css': 'js',
         ...rollupOptions.moduleTypes,
+        ...(jsxLoader ? { '.js': 'jsx' } : {}),
       },
     })
     if (canceled) {

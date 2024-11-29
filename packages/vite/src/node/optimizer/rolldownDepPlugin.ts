@@ -1,5 +1,5 @@
 import path from 'node:path'
-import type { ImportKind, Plugin } from 'rolldown'
+import type { ImportKind, Plugin, RolldownPlugin } from 'rolldown'
 import { JS_TYPES_RE, KNOWN_ASSET_TYPES } from '../constants'
 import type { PackageCache } from '../packages'
 import {
@@ -55,7 +55,7 @@ export function rolldownDepPlugin(
   environment: Environment,
   qualified: Record<string, string>,
   external: string[],
-): Plugin {
+): RolldownPlugin[] {
   const { isProduction } = environment.config
   const { extensions } = environment.config.optimizeDeps
 
@@ -144,149 +144,168 @@ export function rolldownDepPlugin(
     }
   }
 
-  return {
-    name: 'vite:dep-pre-bundle',
-    // clear package cache when build is finished
-    buildEnd() {
-      esmPackageCache.clear()
-      cjsPackageCache.clear()
-    },
-    resolveId: async function (id, importer, options) {
-      const kind = options.kind
+  return [
+    {
+      name: 'vite:dep-pre-bundle-assets',
       // externalize assets and commonly known non-js file types
       // See #8459 for more details about this require-import conversion
-      if (allExternalTypesReg.test(id)) {
-        // if the prefix exist, it is already converted to `import`, so set `external: true`
-        if (id.startsWith(convertedExternalPrefix)) {
-          return {
-            id: id.slice(convertedExternalPrefix.length),
-            external: true,
-          }
-        }
-
-        const resolved = await resolve(id, importer, kind)
-        if (resolved) {
-          // `resolved` can be javascript even when `id` matches `allExternalTypes`
-          // due to cjs resolution (e.g. require("./test.pdf") for "./test.pdf.js")
-          // or package name (e.g. import "some-package.pdf")
-          if (JS_TYPES_RE.test(resolved)) {
+      resolveId: {
+        filter: { id: allExternalTypesReg },
+        async handler(id, importer, options) {
+          const kind = options.kind
+          // if the prefix exist, it is already converted to `import`, so set `external: true`
+          if (id.startsWith(convertedExternalPrefix)) {
             return {
-              // normalize to \\ on windows for esbuild/rolldown behavior difference: https://github.com/sapphi-red-repros/rolldown-esbuild-path-normalization
-              id: isWindows ? resolved.replaceAll('/', '\\') : resolved,
-              external: false,
+              id: id.slice(convertedExternalPrefix.length),
+              external: true,
             }
           }
 
-          if (kind === 'require-call') {
-            // here it is not set to `external: true` to convert `require` to `import`
+          const resolved = await resolve(id, importer, kind)
+          if (resolved) {
+            // `resolved` can be javascript even when `id` matches `allExternalTypes`
+            // due to cjs resolution (e.g. require("./test.pdf") for "./test.pdf.js")
+            // or package name (e.g. import "some-package.pdf")
+            if (JS_TYPES_RE.test(resolved)) {
+              return {
+                // normalize to \\ on windows for esbuild/rolldown behavior difference: https://github.com/sapphi-red-repros/rolldown-esbuild-path-normalization
+                id: isWindows ? resolved.replaceAll('/', '\\') : resolved,
+                external: false,
+              }
+            }
+
+            if (kind === 'require-call') {
+              // here it is not set to `external: true` to convert `require` to `import`
+              return {
+                id: externalWithConversionNamespace + resolved,
+              }
+            }
             return {
-              id: externalWithConversionNamespace + resolved,
+              id: resolved,
+              external: true,
             }
           }
-          return {
-            id: resolved,
-            external: true,
-          }
-        }
-      }
-
-      if (/^[\w@][^:]/.test(id)) {
-        if (moduleListContains(external, id)) {
-          return {
-            id: id,
-            external: true,
-          }
-        }
-
-        // ensure esbuild uses our resolved entries
-        let entry: { id: string } | undefined
-        // if this is an entry, return entry namespace resolve result
-        if (!importer) {
-          if ((entry = resolveEntry(id))) return entry
-          // check if this is aliased to an entry - also return entry namespace
-          const aliased = await _resolve(environment, id, undefined, true)
-          if (aliased && (entry = resolveEntry(aliased))) {
-            return entry
-          }
-        }
-
-        // use vite's own resolver
-        const resolved = await resolve(id, importer, kind)
-        if (resolved) {
-          return resolveResult(id, resolved)
-        }
-      }
+        },
+      },
     },
-    load(id) {
-      if (id.startsWith(externalWithConversionNamespace)) {
-        const path = id.slice(externalWithConversionNamespace.length)
-        // import itself with prefix (this is the actual part of require-import conversion)
-        const modulePath = `"${convertedExternalPrefix}${path}"`
-        return {
-          code:
-            isCSSRequest(path) && !isModuleCSSRequest(path)
-              ? `import ${modulePath};`
-              : `export { default } from ${modulePath};` +
-                `export * from ${modulePath};`,
-        }
-      }
+    {
+      name: 'vite:dep-pre-bundle',
+      // clear package cache when build is finished
+      buildEnd() {
+        esmPackageCache.clear()
+        cjsPackageCache.clear()
+      },
+      resolveId: {
+        filter: { id: /^[\w@][^:]/ },
+        async handler(id, importer, options) {
+          const kind = options.kind
 
-      if (id.startsWith(browserExternalNamespace)) {
-        const path = id.slice(browserExternalNamespace.length)
-        if (isProduction) {
-          return {
-            code: 'module.exports = {}',
+          if (moduleListContains(external, id)) {
+            return {
+              id: id,
+              external: true,
+            }
           }
-        } else {
-          return {
-            // Return in CJS to intercept named imports. Use `Object.create` to
-            // create the Proxy in the prototype to workaround esbuild issue. Why?
-            //
-            // In short, esbuild cjs->esm flow:
-            // 1. Create empty object using `Object.create(Object.getPrototypeOf(module.exports))`.
-            // 2. Assign props of `module.exports` to the object.
-            // 3. Return object for ESM use.
-            //
-            // If we do `module.exports = new Proxy({}, {})`, step 1 returns empty object,
-            // step 2 does nothing as there's no props for `module.exports`. The final object
-            // is just an empty object.
-            //
-            // Creating the Proxy in the prototype satisfies step 1 immediately, which means
-            // the returned object is a Proxy that we can intercept.
-            //
-            // Note: Skip keys that are accessed by esbuild and browser devtools.
-            code: `\
-module.exports = Object.create(new Proxy({}, {
-    get(_, key) {
-    if (
-        key !== '__esModule' &&
-        key !== '__proto__' &&
-        key !== 'constructor' &&
-        key !== 'splice'
-    ) {
-        console.warn(\`Module "${path}" has been externalized for browser compatibility. Cannot access "${path}.\${key}" in client code. See http://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.\`)
-    }
-    }
-}))`,
-          }
-        }
-      }
 
-      if (id.startsWith(optionalPeerDepNamespace)) {
-        if (isProduction) {
-          return {
-            code: 'module.exports = {}',
+          // ensure esbuild uses our resolved entries
+          let entry: { id: string } | undefined
+          // if this is an entry, return entry namespace resolve result
+          if (!importer) {
+            if ((entry = resolveEntry(id))) return entry
+            // check if this is aliased to an entry - also return entry namespace
+            const aliased = await _resolve(environment, id, undefined, true)
+            if (aliased && (entry = resolveEntry(aliased))) {
+              return entry
+            }
           }
-        } else {
-          const path = id.slice(externalWithConversionNamespace.length)
-          const [, peerDep, parentDep] = path.split(':')
-          return {
-            code: `throw new Error(\`Could not resolve "${peerDep}" imported by "${parentDep}". Is it installed?\`)`,
+
+          // use vite's own resolver
+          const resolved = await resolve(id, importer, kind)
+          if (resolved) {
+            return resolveResult(id, resolved)
           }
+        },
+      },
+      load: {
+        filter: {
+          id: [
+            new RegExp(`^${externalWithConversionNamespace}`),
+            new RegExp(`^${browserExternalNamespace}`),
+            new RegExp(`^${optionalPeerDepNamespace}`),
+          ],
+        },
+        handler(id) {
+          if (id.startsWith(externalWithConversionNamespace)) {
+            const path = id.slice(externalWithConversionNamespace.length)
+            // import itself with prefix (this is the actual part of require-import conversion)
+            const modulePath = `"${convertedExternalPrefix}${path}"`
+            return {
+              code:
+                isCSSRequest(path) && !isModuleCSSRequest(path)
+                  ? `import ${modulePath};`
+                  : `export { default } from ${modulePath};` +
+                    `export * from ${modulePath};`,
+            }
+          }
+
+          if (id.startsWith(browserExternalNamespace)) {
+            const path = id.slice(browserExternalNamespace.length)
+            if (isProduction) {
+              return {
+                code: 'module.exports = {}',
+              }
+            } else {
+              return {
+                // Return in CJS to intercept named imports. Use `Object.create` to
+                // create the Proxy in the prototype to workaround esbuild issue. Why?
+                //
+                // In short, esbuild cjs->esm flow:
+                // 1. Create empty object using `Object.create(Object.getPrototypeOf(module.exports))`.
+                // 2. Assign props of `module.exports` to the object.
+                // 3. Return object for ESM use.
+                //
+                // If we do `module.exports = new Proxy({}, {})`, step 1 returns empty object,
+                // step 2 does nothing as there's no props for `module.exports`. The final object
+                // is just an empty object.
+                //
+                // Creating the Proxy in the prototype satisfies step 1 immediately, which means
+                // the returned object is a Proxy that we can intercept.
+                //
+                // Note: Skip keys that are accessed by esbuild and browser devtools.
+                code: `\
+    module.exports = Object.create(new Proxy({}, {
+        get(_, key) {
+        if (
+            key !== '__esModule' &&
+            key !== '__proto__' &&
+            key !== 'constructor' &&
+            key !== 'splice'
+        ) {
+            console.warn(\`Module "${path}" has been externalized for browser compatibility. Cannot access "${path}.\${key}" in client code. See http://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.\`)
         }
-      }
+        }
+    }))`,
+              }
+            }
+          }
+
+          if (id.startsWith(optionalPeerDepNamespace)) {
+            if (isProduction) {
+              return {
+                code: 'module.exports = {}',
+              }
+            } else {
+              const path = id.slice(externalWithConversionNamespace.length)
+              const [, peerDep, parentDep] = path.split(':')
+              return {
+                code: `throw new Error(\`Could not resolve "${peerDep}" imported by "${parentDep}". Is it installed?\`)`,
+              }
+            }
+          }
+        },
+      },
     },
-  }
+  ]
 }
 
 const matchesEntireLine = (text: string) => `^${escapeRegex(text)}$`
@@ -301,38 +320,44 @@ export function rolldownCjsExternalPlugin(
 
   return {
     name: 'cjs-external',
-    resolveId(id, _importer, options) {
-      if (id.startsWith(nonFacadePrefix)) {
-        return {
-          id: id.slice(nonFacadePrefix.length),
-          external: true,
-        }
-      }
-
-      if (filter.test(id)) {
-        const kind = options.kind
-        // preserve `require` for node because it's more accurate than converting it to import
-        if (kind === 'require-call' && platform !== 'node') {
+    resolveId: {
+      filter: { id: [new RegExp(`^${nonFacadePrefix}`), filter] },
+      handler(id, _importer, options) {
+        if (id.startsWith(nonFacadePrefix)) {
           return {
-            id: cjsExternalFacadeNamespace + id,
+            id: id.slice(nonFacadePrefix.length),
+            external: true,
           }
         }
 
-        return {
-          id,
-          external: true,
+        if (filter.test(id)) {
+          const kind = options.kind
+          // preserve `require` for node because it's more accurate than converting it to import
+          if (kind === 'require-call' && platform !== 'node') {
+            return {
+              id: cjsExternalFacadeNamespace + id,
+            }
+          }
+
+          return {
+            id,
+            external: true,
+          }
         }
-      }
+      },
     },
-    load(id) {
-      if (id.startsWith(cjsExternalFacadeNamespace)) {
-        return {
-          code:
-            `import * as m from ${JSON.stringify(
-              nonFacadePrefix + id.slice(cjsExternalFacadeNamespace.length),
-            )};` + `module.exports = m;`,
+    load: {
+      filter: { id: [new RegExp(`^${cjsExternalFacadeNamespace}`)] },
+      handler(id) {
+        if (id.startsWith(cjsExternalFacadeNamespace)) {
+          return {
+            code:
+              `import * as m from ${JSON.stringify(
+                nonFacadePrefix + id.slice(cjsExternalFacadeNamespace.length),
+              )};` + `module.exports = m;`,
+          }
         }
-      }
+      },
     },
   }
 }

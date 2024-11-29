@@ -3,11 +3,10 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 import type { Loader } from 'esbuild'
-import { transform } from 'esbuild'
+import { scan, transform } from 'rolldown/experimental'
 import type { PartialResolvedId, Plugin } from 'rolldown'
 import colors from 'picocolors'
 import { glob, isDynamicPattern } from 'tinyglobby'
-import { scan } from 'rolldown/experimental'
 import {
   CSS_LANGS_RE,
   JS_TYPES_RE,
@@ -37,7 +36,7 @@ import { BaseEnvironment } from '../baseEnvironment'
 import type { DevEnvironment } from '../server/environment'
 import { transformGlobImport } from '../plugins/importMetaGlob'
 import { cleanUrl } from '../../shared/utils'
-import { loadTsconfigJsonForFile } from '../plugins/esbuild'
+// import { loadTsconfigJsonForFile } from '../plugins/esbuild'
 
 export class ScanEnvironment extends BaseEnvironment {
   mode = 'scan' as const
@@ -276,6 +275,22 @@ async function prepareRolldownScanner(
   const { plugins: pluginsFromConfig = [], ...rollupOptions } =
     environment.config.optimizeDeps.rollupOptions ?? {}
 
+  // TODO: enableDecorators when needed
+  // The plugin pipeline automatically loads the closest tsconfig.json.
+  // But esbuild doesn't support reading tsconfig.json if the plugin has resolved the path (https://github.com/evanw/esbuild/issues/2265).
+  // Due to syntax incompatibilities between the experimental decorators in TypeScript and TC39 decorators,
+  // we cannot simply set `"experimentalDecorators": true` or `false`. (https://github.com/vitejs/vite/pull/15206#discussion_r1417414715)
+  // Therefore, we use the closest tsconfig.json from the root to make it work in most cases.
+  // let tsconfigRaw = esbuildOptions.tsconfigRaw
+  // if (!tsconfigRaw && !esbuildOptions.tsconfig) {
+  //   const { tsconfig } = await loadTsconfigJsonForFile(
+  //     path.join(environment.config.root, '_dummy.js'),
+  //   )
+  //   if (tsconfig.compilerOptions?.experimentalDecorators) {
+  //     tsconfigRaw = { compilerOptions: { experimentalDecorators: true } }
+  //   }
+  // }
+
   const plugins = await asyncFlatten(arraify(pluginsFromConfig))
 
   plugins.push(rolldownScanPlugin(environment, deps, missing, entries))
@@ -379,15 +394,31 @@ function rolldownScanPlugin(
     external: !entries.includes(path),
   })
 
-  const doTransformGlobImport = async (contents: string, id: string) => {
+  const doTransformGlobImport = async (
+    contents: string,
+    id: string,
+    loader: 'js' | 'ts' | 'jsx' | 'tsx',
+  ) => {
+    let transpiledContents: string
+    // transpile because `transformGlobImport` only expects js
+    if (loader !== 'js') {
+      const result = transform(id, contents, { lang: loader })
+      if (result.errors.length > 0) {
+        throw new AggregateError(result.errors, 'oxc transform error')
+      }
+      transpiledContents = result.code
+    } else {
+      transpiledContents = contents
+    }
+
     const result = await transformGlobImport(
-      contents,
+      transpiledContents,
       id,
       environment.config.root,
       resolve,
     )
 
-    return result?.s.toString() || contents
+    return result?.s.toString() || transpiledContents
   }
 
   const scripts: Record<
@@ -444,17 +475,14 @@ function rolldownScanPlugin(
 
         // append imports in TS to prevent esbuild from removing them
         // since they may be used in the template
-        let contents =
+        const contents =
           content + (loader.startsWith('ts') ? extractImportPaths(content) : '')
 
         const key = `${id}?id=${scriptId++}`
-        if (loader !== 'js') {
-          contents = (await transform(contents, { loader })).code
-        }
         if (contents.includes('import.meta.glob')) {
           scripts[key] = {
             loader: 'js', // since it is transpiled
-            contents: await doTransformGlobImport(contents, id),
+            contents: await doTransformGlobImport(contents, id, loader),
           }
         } else {
           scripts[key] = {
@@ -637,8 +665,10 @@ function rolldownScanPlugin(
     },
     async load(id) {
       if (virtualModuleRE.test(id)) {
+        const script = scripts[id.replace(virtualModulePrefix, '')]
         return {
-          code: scripts[id.replace(virtualModulePrefix, '')].contents,
+          code: script.contents,
+          moduleType: script.loader,
         }
       }
 
@@ -663,28 +693,17 @@ function rolldownScanPlugin(
           contents = esbuildConfig.jsxInject + `\n` + contents
         }
 
-        const loader = ext as Loader
-
-        if (loader !== 'js') {
-          let tsconfigRaw
-          const { tsconfig } = await loadTsconfigJsonForFile(
-            path.join(environment.config.root, '_dummy.js'),
-          )
-          if (tsconfig.compilerOptions?.experimentalDecorators) {
-            tsconfigRaw = { compilerOptions: { experimentalDecorators: true } }
-          }
-          contents = (await transform(contents, { loader, tsconfigRaw })).code
-        }
+        const loader = ext as 'js' | 'ts' | 'jsx' | 'tsx'
 
         if (contents.includes('import.meta.glob')) {
           return {
             moduleType: 'js',
-            code: await doTransformGlobImport(contents, id),
+            code: await doTransformGlobImport(contents, id, loader),
           }
         }
 
         return {
-          moduleType: 'js',
+          moduleType: loader,
           code: contents,
         }
       }
