@@ -8,8 +8,8 @@ import { createRequire } from 'node:module'
 import crypto from 'node:crypto'
 import colors from 'picocolors'
 import type { Alias, AliasOptions } from 'dep-types/alias'
-import { build } from 'esbuild'
-import type { RollupOptions } from 'rolldown'
+import { rolldown } from 'rolldown'
+import type { OutputChunk, RollupOptions } from 'rolldown'
 import picomatch from 'picomatch'
 import type { AnymatchFn } from '../types/anymatch'
 import { withTrailingSlash } from '../shared/utils'
@@ -1901,19 +1901,14 @@ async function bundleConfigFile(
   const dirnameVarName = '__vite_injected_original_dirname'
   const filenameVarName = '__vite_injected_original_filename'
   const importMetaUrlVarName = '__vite_injected_original_import_meta_url'
-  const result = await build({
-    absWorkingDir: process.cwd(),
-    entryPoints: [fileName],
-    write: false,
-    target: [`node${process.versions.node}`],
+
+  const bundle = await rolldown({
+    input: fileName,
+    // target: [`node${process.versions.node}`],
     platform: 'node',
-    bundle: true,
-    format: isESM ? 'esm' : 'cjs',
-    mainFields: ['main'],
-    sourcemap: 'inline',
-    // the last slash is needed to make the path correct
-    sourceRoot: path.dirname(fileName) + path.sep,
-    metafile: true,
+    resolve: {
+      mainFields: ['main'],
+    },
     define: {
       __dirname: dirnameVarName,
       __filename: filenameVarName,
@@ -1921,47 +1916,47 @@ async function bundleConfigFile(
       'import.meta.dirname': dirnameVarName,
       'import.meta.filename': filenameVarName,
     },
+    // disable treeshake to include files that is not sideeffectful to `moduleIds`
+    treeshake: false,
+    // TODO: check if sourcemap works correctly
+    // the last slash is needed to make the path correct
+    // sourceRoot: path.dirname(fileName) + path.sep,
     plugins: [
-      {
-        name: 'externalize-deps',
-        setup(build) {
-          const packageCache = new Map()
-          const resolveByViteResolver = (
-            id: string,
-            importer: string,
-            isRequire: boolean,
-          ) => {
-            return tryNodeResolve(id, importer, {
-              root: path.dirname(fileName),
-              isBuild: true,
-              isProduction: true,
-              preferRelative: false,
-              tryIndex: true,
-              mainFields: [],
-              conditions: [
-                'node',
-                ...(isModuleSyncConditionEnabled ? ['module-sync'] : []),
-              ],
-              externalConditions: [],
-              external: [],
-              noExternal: [],
-              dedupe: [],
-              extensions: configDefaults.resolve.extensions,
-              preserveSymlinks: false,
-              packageCache,
-              isRequire,
-            })?.id
-          }
+      (() => {
+        const packageCache = new Map()
+        const resolveByViteResolver = (
+          id: string,
+          importer: string,
+          isRequire: boolean,
+        ) => {
+          return tryNodeResolve(id, importer, {
+            root: path.dirname(fileName),
+            isBuild: true,
+            isProduction: true,
+            preferRelative: false,
+            tryIndex: true,
+            mainFields: [],
+            conditions: [
+              'node',
+              ...(isModuleSyncConditionEnabled ? ['module-sync'] : []),
+            ],
+            externalConditions: [],
+            external: [],
+            noExternal: [],
+            dedupe: [],
+            extensions: configDefaults.resolve.extensions,
+            preserveSymlinks: false,
+            packageCache,
+            isRequire,
+          })?.id
+        }
 
-          // externalize bare imports
-          build.onResolve(
-            { filter: /^[^.#].*/ },
-            async ({ path: id, importer, kind }) => {
-              if (
-                kind === 'entry-point' ||
-                path.isAbsolute(id) ||
-                isNodeBuiltin(id)
-              ) {
+        return {
+          name: 'externalize-deps',
+          resolveId: {
+            filter: { id: /^[^.#].*/ },
+            async handler(id, importer, { kind }) {
+              if (!importer || path.isAbsolute(id) || isNodeBuiltin(id)) {
                 return
               }
 
@@ -1969,7 +1964,7 @@ async function bundleConfigFile(
               // non-node built-in, which esbuild doesn't know how to handle. In that case, we
               // externalize it so the non-node runtime handles it instead.
               if (isBuiltin(id)) {
-                return { external: true }
+                return { id, external: true }
               }
 
               const isImport = isESM || kind === 'dynamic-import'
@@ -1996,44 +1991,80 @@ async function bundleConfigFile(
                 }
                 throw e
               }
+              if (!idFsPath) return
+              // always no-externalize json files as rolldown does not support import attributes
+              if (idFsPath.endsWith('.json')) {
+                return idFsPath
+              }
+
               if (idFsPath && isImport) {
                 idFsPath = pathToFileURL(idFsPath).href
               }
-              return {
-                path: idFsPath,
-                external: true,
-              }
+              return { id: idFsPath, external: true }
             },
-          )
-        },
-      },
+          },
+        }
+      })(),
       {
         name: 'inject-file-scope-variables',
-        setup(build) {
-          build.onLoad({ filter: /\.[cm]?[jt]s$/ }, async (args) => {
-            const contents = await fsp.readFile(args.path, 'utf-8')
+        transform: {
+          filter: { id: /\.[cm]?[jt]s$/ },
+          async handler(code, id) {
             const injectValues =
-              `const ${dirnameVarName} = ${JSON.stringify(
-                path.dirname(args.path),
-              )};` +
-              `const ${filenameVarName} = ${JSON.stringify(args.path)};` +
+              `const ${dirnameVarName} = ${JSON.stringify(path.dirname(id))};` +
+              `const ${filenameVarName} = ${JSON.stringify(id)};` +
               `const ${importMetaUrlVarName} = ${JSON.stringify(
-                pathToFileURL(args.path).href,
+                pathToFileURL(id).href,
               )};`
-
-            return {
-              loader: args.path.endsWith('ts') ? 'ts' : 'js',
-              contents: injectValues + contents,
-            }
-          })
+            return { code: injectValues + code, map: null }
+          },
         },
       },
     ],
   })
-  const { text } = result.outputFiles[0]
+  const result = await bundle.generate({
+    format: isESM ? 'esm' : 'cjs',
+    sourcemap: 'inline',
+  })
+  await bundle.close()
+
+  const entryChunk = result.output.find(
+    (chunk): chunk is OutputChunk => chunk.type === 'chunk' && chunk.isEntry,
+  )!
+  const bundleChunks = Object.fromEntries(
+    result.output.flatMap((c) => (c.type === 'chunk' ? [[c.fileName, c]] : [])),
+  )
+
+  const allModules = new Set<string>()
+  collectAllModules(bundleChunks, entryChunk.fileName, allModules)
+  allModules.delete(fileName)
+
   return {
-    code: text,
-    dependencies: Object.keys(result.metafile.inputs),
+    code: entryChunk.code,
+    dependencies: [...allModules],
+  }
+}
+
+function collectAllModules(
+  bundle: Record<string, OutputChunk>,
+  fileName: string,
+  allModules: Set<string>,
+  analyzedModules = new Set<string>(),
+) {
+  if (analyzedModules.has(fileName)) return
+  analyzedModules.add(fileName)
+
+  const chunk = bundle[fileName]!
+  for (const mod of chunk.moduleIds) {
+    allModules.add(mod)
+  }
+  for (const i of chunk.imports) {
+    analyzedModules.add(i)
+    collectAllModules(bundle, i, allModules, analyzedModules)
+  }
+  for (const i of chunk.dynamicImports) {
+    analyzedModules.add(i)
+    collectAllModules(bundle, i, allModules, analyzedModules)
   }
 }
 
