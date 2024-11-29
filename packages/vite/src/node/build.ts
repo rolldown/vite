@@ -416,6 +416,9 @@ export function resolveBuildEnvironmentOptions(
       ...buildEnvironmentOptionsDefaults,
       cssCodeSplit: !raw.lib,
       minify: consumer === 'server' ? false : 'esbuild',
+      rollupOptions: {
+        platform: consumer === 'server' ? 'node' : 'browser',
+      },
       ssr: consumer === 'server',
       emitAssets: consumer === 'client',
       createEnvironment: (name, config) => new BuildEnvironment(name, config),
