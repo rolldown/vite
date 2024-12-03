@@ -308,6 +308,7 @@ export function convertEsbuildConfigToOxcConfig(
   switch (esbuildTransformOptions.sourcemap) {
     case true:
     case false:
+    case undefined:
       oxcOptions.sourcemap = esbuildTransformOptions.sourcemap
       break
     case 'external':
