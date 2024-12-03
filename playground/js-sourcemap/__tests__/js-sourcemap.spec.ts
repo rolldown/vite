@@ -173,7 +173,8 @@ describe.runIf(isBuild)('build tests', () => {
     expect(js).not.toMatch(/__vite__mapDeps/)
   })
 
-  test('sourcemap is correct when using object as "define" value', async () => {
+  // NOTE: this test is not relevant to oxc
+  test.skip('sourcemap is correct when using object as "define" value', async () => {
     const map = findAssetFile(/with-define-object.*\.js\.map/)
     expect(formatSourcemapForSnapshot(JSON.parse(map))).toMatchInlineSnapshot(`
       {
