@@ -153,7 +153,7 @@ export interface BuildEnvironmentOptions {
   /**
    * Override CSS minification specifically instead of defaulting to `build.minify`,
    * so you can configure minification for JS and CSS separately.
-   * @default 'esbuild'
+   * @default 'lightningcss'
    */
   cssMinify?: boolean | 'esbuild' | 'lightningcss'
   /**
@@ -446,7 +446,8 @@ export function resolveBuildEnvironmentOptions(
     ...merged,
     cssTarget: merged.cssTarget ?? merged.target,
     cssMinify:
-      merged.cssMinify ?? (consumer === 'server' ? 'esbuild' : !!merged.minify),
+      merged.cssMinify ??
+      (consumer === 'server' ? 'lightningcss' : !!merged.minify),
     // Resolve to false | object
     modulePreload:
       merged.modulePreload === false
