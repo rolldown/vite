@@ -140,7 +140,7 @@ describe.runIf(isBuild)('build tests', () => {
     expect(formatSourcemapForSnapshot(JSON.parse(map))).toMatchInlineSnapshot(`
       {
         "ignoreList": [],
-        "mappings": ";4jCAAA,OAAO,6BAAuB,wBAE9B,QAAQ,IAAI",
+        "mappings": ";ypCAAA,OAAO,6BAAuB,wBAE9B,QAAQ,IAAI,wBAAuB",
         "sources": [
           "../../after-preload-dynamic.js",
         ],

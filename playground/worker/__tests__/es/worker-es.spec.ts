@@ -104,7 +104,7 @@ describe.runIf(isBuild)('build', () => {
     )
 
     // worker should have all imports resolved and no exports
-    expect(workerContent).not.toMatch(/import[^.]/)
+    expect(workerContent).not.toMatch(/import\s*["(]/)
     expect(workerContent).not.toMatch(/\bexport\b/)
     // chunk
     expect(content).toMatch(`new Worker("/es/assets`)
@@ -113,7 +113,7 @@ describe.runIf(isBuild)('build', () => {
     expect(content).toMatch(`(self.URL||self.webkitURL).createObjectURL`)
     expect(content).toMatch(`self.Blob`)
     expect(content).toMatch(
-      /try\{if\(\w+=\w+&&\(self\.URL\|\|self\.webkitURL\)\.createObjectURL\(\w+\),!\w+\)throw""/,
+      /try\{\w+=\w+&&\(self\.URL\|\|self\.webkitURL\)\.createObjectURL\(\w+\)[;\w()!]+throw\s*""/,
     )
     // inlined shared worker
     expect(content).toMatch(

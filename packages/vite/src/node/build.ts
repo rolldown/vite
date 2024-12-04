@@ -166,10 +166,10 @@ export interface BuildEnvironmentOptions {
   sourcemap?: boolean | 'inline' | 'hidden'
   /**
    * Set to `false` to disable minification, or specify the minifier to use.
-   * Available options are 'terser' or 'esbuild'.
-   * @default 'esbuild'
+   * Available options are 'terser' or 'esbuild' or 'oxc'.
+   * @default 'oxc'
    */
-  minify?: boolean | 'terser' | 'esbuild'
+  minify?: boolean | 'terser' | 'esbuild' | 'oxc'
   /**
    * Options for terser
    * https://terser.org/docs/api-reference#minify-options
@@ -415,7 +415,7 @@ export function resolveBuildEnvironmentOptions(
     {
       ...buildEnvironmentOptionsDefaults,
       cssCodeSplit: !raw.lib,
-      minify: consumer === 'server' ? false : 'esbuild',
+      minify: consumer === 'server' ? false : 'oxc',
       rollupOptions: {
         platform: consumer === 'server' ? 'node' : 'browser',
       },
@@ -435,7 +435,7 @@ export function resolveBuildEnvironmentOptions(
   if ((merged.minify as string) === 'false') {
     merged.minify = false
   } else if (merged.minify === true) {
-    merged.minify = 'esbuild'
+    merged.minify = 'oxc'
   }
 
   const defaultModulePreload = {
@@ -766,6 +766,7 @@ async function buildEnvironment(
           output.format === 'iife' ||
           (isSsrTargetWebworkerEnvironment &&
             (typeof input === 'string' || Object.keys(input).length === 1)),
+        minify: options.minify === 'oxc',
         ...output,
       }
     }
