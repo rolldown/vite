@@ -93,6 +93,7 @@ import type { TransformOptions, TransformResult } from './transformRequest'
 import { transformRequest } from './transformRequest'
 import { searchForPackageRoot, searchForWorkspaceRoot } from './searchRoot'
 import type { DevEnvironment } from './environment'
+import { rolldownDevConfigureServer } from './environments/rolldown'
 
 export interface ServerOptions extends CommonServerOptions {
   /**
@@ -833,6 +834,10 @@ export async function _createServer(
   const postHooks: ((() => void) | void)[] = []
   for (const hook of config.getSortedPluginHooks('configureServer')) {
     postHooks.push(await hook(reflexServer))
+  }
+
+  if (config.experimental.rolldownDev) {
+    rolldownDevConfigureServer(reflexServer)
   }
 
   // Internal middlewares ------------------------------------------------------

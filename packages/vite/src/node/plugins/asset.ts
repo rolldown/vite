@@ -275,7 +275,10 @@ export async function fileToUrl(
   id: string,
 ): Promise<string> {
   const { environment } = pluginContext
-  if (environment.config.command === 'serve') {
+  if (
+    environment.config.command === 'serve' &&
+    !environment.config.experimental.rolldownDev
+  ) {
     return fileToDevUrl(environment, id)
   } else {
     return fileToBuiltUrl(pluginContext, id)

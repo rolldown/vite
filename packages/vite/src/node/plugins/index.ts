@@ -45,11 +45,13 @@ export async function resolvePlugins(
   normalPlugins: Plugin[],
   postPlugins: Plugin[],
 ): Promise<Plugin[]> {
+  const rolldownDev = config.experimental.rolldownDev
   const isBuild = config.command === 'build'
   const isWorker = config.isWorker
-  const buildPlugins = isBuild
-    ? await (await import('../build')).resolveBuildPlugins(config)
-    : { pre: [], post: [] }
+  const buildPlugins =
+    isBuild || rolldownDev
+      ? await (await import('../build')).resolveBuildPlugins(config)
+      : { pre: [], post: [] }
   const { modulePreload } = config.build
   const depOptimizationEnabled =
     !isBuild &&
@@ -60,7 +62,7 @@ export async function resolvePlugins(
 
   return [
     depOptimizationEnabled ? optimizedDepsPlugin() : null,
-    isBuild ? metadataPlugin() : null,
+    rolldownDev || isBuild ? metadataPlugin() : null,
     !isWorker ? watchPackageDataPlugin(config.packageCache) : null,
     !isBuild ? preAliasPlugin(config) : null,
     enableNativePlugin
@@ -123,9 +125,18 @@ export async function resolvePlugins(
     htmlInlineProxyPlugin(config),
     cssPlugin(config),
     config.oxc !== false
-      ? enableNativePlugin
-        ? nativeTransformPlugin()
-        : oxcPlugin(config)
+      ? rolldownDev
+        ? perEnvironmentPlugin(
+            'native:transform',
+            (environment) =>
+              nativeTransformPlugin({
+                reactRefresh:
+                  environment.name === 'client' && rolldownDev?.reactRefresh,
+              }) as unknown as Plugin,
+          )
+        : enableNativePlugin
+          ? nativeTransformPlugin()
+          : oxcPlugin(config)
       : null,
     enableNativePlugin
       ? nativeJsonPlugin({
@@ -146,7 +157,7 @@ export async function resolvePlugins(
     enableNativePlugin ? nativeWasmFallbackPlugin() : wasmFallbackPlugin(),
     definePlugin(config),
     cssPostPlugin(config),
-    isBuild && buildHtmlPlugin(config),
+    (rolldownDev || isBuild) && buildHtmlPlugin(config),
     workerImportMetaUrlPlugin(config),
     assetImportMetaUrlPlugin(config),
     ...buildPlugins.pre,

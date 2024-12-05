@@ -88,7 +88,8 @@
     "esbuild": "^0.24.0",
     "lightningcss": "^1.28.1",
     "postcss": "^8.4.49",
-    "rolldown": "0.14.0-snapshot-1cfa47c-20241129015040",
+    "react-refresh": "^0.14.2",
+    "rolldown": "file:../../rolldown-0.14.0.tgz",
     "rollup": "^4.23.0"
   },
   "optionalDependencies": {

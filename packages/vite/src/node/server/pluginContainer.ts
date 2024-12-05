@@ -141,7 +141,9 @@ export async function createEnvironmentPluginContainer(
     plugins,
     watcher,
   )
-  await container.resolveRollupOptions()
+  if (!environment.config.experimental.rolldownDev) {
+    await container.resolveRollupOptions()
+  }
   return container
 }
 

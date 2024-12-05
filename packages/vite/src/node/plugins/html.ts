@@ -775,7 +775,13 @@ export function buildHtmlPlugin(config: ResolvedConfig): RolldownPlugin {
         tag: 'script',
         attrs: {
           ...(isAsync ? { async: true } : {}),
-          type: 'module',
+          ...(config.experimental.rolldownDev
+            ? {
+                defer: true,
+              }
+            : {
+                type: 'module',
+              }),
           // crossorigin must be set not only for serving assets in a different origin
           // but also to make it possible to preload the script using `<link rel="preload">`.
           // `<script type="module">` used to fetch the script with credential mode `omit`,
