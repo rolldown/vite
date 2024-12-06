@@ -9,7 +9,6 @@ import type { Plugin } from '../plugin'
 import { normalizePath, sortObjectKeys } from '../utils'
 import { perEnvironmentState } from '../environment'
 import { cssEntriesMap } from './asset'
-import { getChunkMetadata } from './metadata'
 
 const endsWithJSRE = /\.[cm]?js$/
 
@@ -108,11 +107,11 @@ export function manifestPlugin(): Plugin {
           }
         }
 
-        if (getChunkMetadata(chunk)?.importedCss.size) {
-          manifestChunk.css = [...getChunkMetadata(chunk)!.importedCss]
+        if (chunk.viteMetadata?.importedCss.size) {
+          manifestChunk.css = [...chunk.viteMetadata.importedCss]
         }
-        if (getChunkMetadata(chunk)?.importedAssets.size) {
-          manifestChunk.assets = [...getChunkMetadata(chunk)!.importedAssets]
+        if (chunk.viteMetadata?.importedAssets.size) {
+          manifestChunk.assets = [...chunk.viteMetadata.importedAssets]
         }
 
         return manifestChunk

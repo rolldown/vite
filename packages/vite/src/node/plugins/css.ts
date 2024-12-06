@@ -104,7 +104,6 @@ import {
 } from './asset'
 import type { ESBuildOptions } from './esbuild'
 import { getChunkOriginalFileName } from './manifest'
-import { getChunkMetadata } from './metadata'
 
 const decoder = new TextDecoder()
 // const debug = createDebugger('vite:css')
@@ -694,7 +693,7 @@ export function cssPostPlugin(config: ResolvedConfig): RolldownPlugin {
         // replace asset url references with resolved url.
         chunkCSS = chunkCSS.replace(assetUrlRE, (_, fileHash, postfix = '') => {
           const filename = this.getFileName(fileHash) + postfix
-          getChunkMetadata(chunk)!.importedAssets.add(cleanUrl(filename))
+          chunk.viteMetadata!.importedAssets.add(cleanUrl(filename))
           return encodeURIPath(
             toOutputFilePathInCss(
               filename,
@@ -805,7 +804,7 @@ export function cssPostPlugin(config: ResolvedConfig): RolldownPlugin {
           })
 
           const filename = this.getFileName(referenceId)
-          getChunkMetadata(chunk)!.importedAssets.add(cleanUrl(filename))
+          chunk.viteMetadata!.importedAssets.add(cleanUrl(filename))
           const replacement = toOutputFilePathInJS(
             this.environment,
             filename,
@@ -863,9 +862,7 @@ export function cssPostPlugin(config: ResolvedConfig): RolldownPlugin {
             if (isEntry) {
               cssEntriesMap.get(this.environment)!.add(referenceId)
             }
-            getChunkMetadata(chunk)!.importedCss.add(
-              this.getFileName(referenceId),
-            )
+            chunk.viteMetadata!.importedCss.add(this.getFileName(referenceId))
           } else if (this.environment.config.consumer === 'client') {
             // legacy build and inline css
 
@@ -920,9 +917,9 @@ export function cssPostPlugin(config: ResolvedConfig): RolldownPlugin {
     },
 
     augmentChunkHash(chunk) {
-      if (getChunkMetadata(chunk)?.importedCss.size) {
+      if (chunk.viteMetadata?.importedCss.size) {
         let hash = ''
-        for (const id of getChunkMetadata(chunk)!.importedCss) {
+        for (const id of chunk.viteMetadata.importedCss) {
           hash += id
         }
         return hash
@@ -1016,14 +1013,14 @@ export function cssPostPlugin(config: ResolvedConfig): RolldownPlugin {
             // chunks instead.
             chunk.imports = chunk.imports.filter((file) => {
               if (pureCssChunkNames.includes(file)) {
-                const { importedCss, importedAssets } = getChunkMetadata(
-                  bundle[file] as OutputChunk,
-                )!
+                const { importedCss, importedAssets } = (
+                  bundle[file] as OutputChunk
+                ).viteMetadata!
                 importedCss.forEach((file) =>
-                  getChunkMetadata(chunk)!.importedCss.add(file),
+                  chunk.viteMetadata!.importedCss.add(file),
                 )
                 importedAssets.forEach((file) =>
-                  getChunkMetadata(chunk)!.importedAssets.add(file),
+                  chunk.viteMetadata!.importedAssets.add(file),
                 )
                 chunkImportsPureCssChunk = true
                 return false

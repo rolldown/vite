@@ -34,7 +34,6 @@ import { preAliasPlugin } from './preAlias'
 import { definePlugin } from './define'
 import { workerImportMetaUrlPlugin } from './workerImportMetaUrl'
 import { assetImportMetaUrlPlugin } from './assetImportMetaUrl'
-import { metadataPlugin } from './metadata'
 import { dynamicImportVarsPlugin } from './dynamicImportVars'
 import { importGlobPlugin } from './importMetaGlob'
 import { oxcPlugin } from './oxc'
@@ -60,7 +59,6 @@ export async function resolvePlugins(
 
   return [
     depOptimizationEnabled ? optimizedDepsPlugin() : null,
-    isBuild ? metadataPlugin() : null,
     !isWorker ? watchPackageDataPlugin(config.packageCache) : null,
     !isBuild ? preAliasPlugin(config) : null,
     enableNativePlugin

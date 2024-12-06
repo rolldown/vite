@@ -15,7 +15,6 @@ import {
   sortObjectKeys,
 } from '../utils'
 import { perEnvironmentState } from '../environment'
-import { getChunkMetadata } from '../plugins/metadata'
 
 export function ssrManifestPlugin(): Plugin {
   // module id => preload assets mapping
@@ -45,11 +44,11 @@ export function ssrManifestPlugin(): Plugin {
               mappedChunks.push(joinUrlSegments(base, chunk.fileName))
               // <link> tags for entry chunks are already generated in static HTML,
               // so we only need to record info for non-entry chunks.
-              getChunkMetadata(chunk)!.importedCss.forEach((file) => {
+              chunk.viteMetadata!.importedCss.forEach((file) => {
                 mappedChunks.push(joinUrlSegments(base, file))
               })
             }
-            getChunkMetadata(chunk)!.importedAssets.forEach((file) => {
+            chunk.viteMetadata!.importedAssets.forEach((file) => {
               mappedChunks.push(joinUrlSegments(base, file))
             })
           }
@@ -87,7 +86,7 @@ export function ssrManifestPlugin(): Plugin {
                   analyzed.add(filename)
                   const chunk = bundle[filename] as OutputChunk | undefined
                   if (chunk) {
-                    getChunkMetadata(chunk)!.importedCss.forEach((file) => {
+                    chunk.viteMetadata!.importedCss.forEach((file) => {
                       deps.push(joinUrlSegments(base, file))
                     })
                     chunk.imports.forEach(addDeps)

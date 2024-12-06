@@ -1,6 +1,7 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
 import type { OutputChunk, RolldownPlugin, RollupError } from 'rolldown'
+import type { ChunkMetadata } from 'types/metadata'
 import type { ResolvedConfig } from '../config'
 import type { Plugin } from '../plugin'
 import { ENV_ENTRY, ENV_PUBLIC_PATH } from '../constants'
@@ -79,11 +80,12 @@ async function bundleWorkerEntry(
   const workerEnvironment = new BuildEnvironment('client', workerConfig) // TODO: should this be 'worker'?
   await workerEnvironment.init()
 
+  const chunkMetadataMap = new Map<string, ChunkMetadata>()
   const bundle = await rolldown({
     ...rollupOptions,
     input,
     plugins: workerEnvironment.plugins.map((p) =>
-      injectEnvironmentToHooks(workerEnvironment, p),
+      injectEnvironmentToHooks(workerEnvironment, chunkMetadataMap, p),
     ),
     onwarn(warning, warn) {
       onRollupWarning(warning, warn, workerEnvironment)
