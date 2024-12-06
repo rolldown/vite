@@ -1,14 +1,16 @@
 import type {
   CustomPluginOptions,
   LoadResult,
+  ModuleType,
   ObjectHook,
   ResolveIdResult,
   MinimalPluginContext as RollupMinimalPluginContext,
   Plugin as RollupPlugin,
   PluginContext as RollupPluginContext,
   TransformPluginContext as RollupTransformPluginContext,
+  SourceMap,
   TransformResult,
-} from 'rollup'
+} from 'rolldown'
 import type {
   ConfigEnv,
   EnvironmentOptions,
@@ -60,6 +62,11 @@ export interface PluginContextExtension {
   environment: Environment
 }
 
+export interface TransformPluginContextExtension {
+  // TODO: rolldown does not support this yet: https://github.com/rolldown/rolldown/pull/1121, https://github.com/rolldown/rolldown/pull/1426
+  getCombinedSourcemap: () => SourceMap
+}
+
 export interface HotUpdatePluginContext {
   environment: DevEnvironment
 }
@@ -78,11 +85,14 @@ export interface ResolveIdPluginContext
 
 export interface TransformPluginContext
   extends RollupTransformPluginContext,
-    PluginContextExtension {}
+    PluginContextExtension,
+    TransformPluginContextExtension {}
 
 // Argument Rollup types to have the PluginContextExtension
-declare module 'rollup' {
+declare module 'rolldown' {
   export interface MinimalPluginContext extends PluginContextExtension {}
+  export interface TransformPluginContext
+    extends TransformPluginContextExtension {}
 }
 
 /**
@@ -130,7 +140,7 @@ export interface Plugin<A = any> extends RollupPlugin<A> {
       source: string,
       importer: string | undefined,
       options: {
-        attributes: Record<string, string>
+        // attributes: Record<string, string>
         custom?: CustomPluginOptions
         ssr?: boolean
         /**
@@ -138,6 +148,7 @@ export interface Plugin<A = any> extends RollupPlugin<A> {
          */
         scan?: boolean
         isEntry: boolean
+        kind?: 'import' | 'dynamic-import' | 'require-call'
       },
     ) => Promise<ResolveIdResult> | ResolveIdResult
   >
@@ -160,6 +171,7 @@ export interface Plugin<A = any> extends RollupPlugin<A> {
       code: string,
       id: string,
       options?: {
+        moduleType: ModuleType
         ssr?: boolean
       },
     ) => Promise<TransformResult> | TransformResult
@@ -338,8 +350,18 @@ export type PluginOption = Thenable<Plugin | FalsyPlugin | PluginOption[]>
 export async function resolveEnvironmentPlugins(
   environment: PartialEnvironment,
 ): Promise<Plugin[]> {
+  return resolveEnvironmentPluginsRaw(
+    environment.getTopLevelConfig().plugins,
+    environment,
+  )
+}
+
+export async function resolveEnvironmentPluginsRaw(
+  plugins: readonly Plugin[],
+  environment: PartialEnvironment,
+): Promise<Plugin[]> {
   const environmentPlugins: Plugin[] = []
-  for (const plugin of environment.getTopLevelConfig().plugins) {
+  for (const plugin of plugins) {
     if (plugin.applyToEnvironment) {
       const applied = await plugin.applyToEnvironment(environment)
       if (!applied) {

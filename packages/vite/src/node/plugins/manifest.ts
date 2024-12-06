@@ -4,11 +4,11 @@ import type {
   OutputAsset,
   OutputChunk,
   RenderedChunk,
-} from 'rollup'
+} from 'rolldown'
 import type { Plugin } from '../plugin'
 import { normalizePath, sortObjectKeys } from '../utils'
 import { perEnvironmentState } from '../environment'
-import { cssEntriesMap } from './asset'
+import { generatedAssetsMap } from './asset'
 
 const endsWithJSRE = /\.[cm]?js$/
 
@@ -130,15 +130,18 @@ export function manifestPlugin(): Plugin {
         return manifestChunk
       }
 
-      const entryCssReferenceIds = cssEntriesMap.get(this.environment)!
-      const entryCssAssetFileNames = new Set(entryCssReferenceIds)
-      for (const id of entryCssReferenceIds) {
-        try {
-          const fileName = this.getFileName(id)
-          entryCssAssetFileNames.add(fileName)
-        } catch {
-          // The asset was generated as part of a different output option.
-          // It was already handled during the previous run of this plugin.
+      const assets = generatedAssetsMap.get(this.environment)!
+      const entryCssAssetFileNames = new Set()
+      for (const [id, asset] of assets.entries()) {
+        if (asset.isEntry) {
+          try {
+            const fileName = this.getFileName(id)
+            entryCssAssetFileNames.add(fileName)
+          } catch {
+            // The asset was generated as part of a different output option.
+            // It was already handled during the previous run of this plugin.
+            assets.delete(id)
+          }
         }
       }
 
@@ -148,28 +151,30 @@ export function manifestPlugin(): Plugin {
         const chunk = bundle[file]
         if (chunk.type === 'chunk') {
           manifest[getChunkName(chunk)] = createChunk(chunk)
-        } else if (chunk.type === 'asset' && chunk.names.length > 0) {
+        } else if (chunk.type === 'asset' && typeof chunk.name === 'string') {
           // Add every unique asset to the manifest, keyed by its original name
           const src =
-            chunk.originalFileNames.length > 0
-              ? chunk.originalFileNames[0]
-              : '_' + path.basename(chunk.fileName)
+            chunk.originalFileName ?? '_' + path.basename(chunk.fileName)
           const isEntry = entryCssAssetFileNames.has(chunk.fileName)
           const asset = createAsset(chunk, src, isEntry)
 
           // If JS chunk and asset chunk are both generated from the same source file,
           // prioritize JS chunk as it contains more information
           const file = manifest[src]?.file
-          if (!(file && endsWithJSRE.test(file))) {
-            manifest[src] = asset
-            fileNameToAsset.set(chunk.fileName, asset)
-          }
+          if (file && endsWithJSRE.test(file)) continue
 
-          for (const originalFileName of chunk.originalFileNames.slice(1)) {
-            const file = manifest[originalFileName]?.file
-            if (!(file && endsWithJSRE.test(file))) {
-              manifest[originalFileName] = asset
-            }
+          manifest[src] = asset
+          fileNameToAsset.set(chunk.fileName, asset)
+        }
+      }
+
+      // Add deduplicated assets to the manifest
+      for (const [referenceId, { originalFileName }] of assets.entries()) {
+        if (originalFileName && !manifest[originalFileName]) {
+          const fileName = this.getFileName(referenceId)
+          const asset = fileNameToAsset.get(fileName)
+          if (asset) {
+            manifest[originalFileName] = asset
           }
         }
       }
@@ -198,6 +203,7 @@ export function getChunkOriginalFileName(
 ): string | undefined {
   if (chunk.facadeModuleId) {
     let name = normalizePath(path.relative(root, chunk.facadeModuleId))
+    // @ts-expect-error TODO: system format is not supported
     if (format === 'system' && !chunk.name.includes('-legacy')) {
       const ext = path.extname(name)
       const endPos = ext.length !== 0 ? -ext.length : undefined

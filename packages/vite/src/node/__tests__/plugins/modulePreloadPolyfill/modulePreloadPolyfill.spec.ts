@@ -1,5 +1,5 @@
 import { describe, it } from 'vitest'
-import type { ModuleFormat, RollupOutput } from 'rollup'
+import type { ModuleFormat, RollupOutput } from 'rolldown'
 import { build } from '../../../build'
 import { modulePreloadPolyfillId } from '../../../plugins/modulePreloadPolyfill'
 
