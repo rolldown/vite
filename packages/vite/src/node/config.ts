@@ -1031,6 +1031,13 @@ function resolveDepOptimizationOptions(
     )
     setResolveOptions('mainFields', optimizeDeps.esbuildOptions.mainFields)
     setResolveOptions('conditionNames', optimizeDeps.esbuildOptions.conditions)
+    if (
+      optimizeDeps.esbuildOptions.keepNames !== undefined &&
+      optimizeDeps.rollupOptions.keepNames === undefined
+    ) {
+      optimizeDeps.rollupOptions.keepNames =
+        optimizeDeps.esbuildOptions.keepNames
+    }
 
     // NOTE: the following options cannot be converted
     // - legalComments
@@ -1057,7 +1064,6 @@ function resolveDepOptimizationOptions(
 
     // NOTE: the following options does not make sense to set / convert it
     // - globalName (we only use ESM format)
-    // - keepNames (probably rolldown does not need it? not sure)
     // - color
     // - logLimit
     // - logOverride
