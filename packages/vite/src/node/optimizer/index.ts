@@ -622,14 +622,20 @@ export function runOptimizeDeps(
     return context
       .build()
       .then((result) => {
+        const depsForSrc: Record<string, OptimizedDepInfo[]> = {}
+        for (const dep of Object.values(depsInfo)) {
+          if (dep.src) {
+            // One chunk maybe corresponding multiply entry
+            depsForSrc[dep.src] ||= []
+            depsForSrc[dep.src].push(dep)
+          }
+        }
+
         for (const chunk of result.output) {
           if (chunk.type !== 'chunk') continue
 
           if (chunk.isEntry) {
-            // One chunk maybe corresponding multiply entry
-            const deps = Object.values(depsInfo).filter(
-              (d) => d.src === normalizePath(chunk.facadeModuleId!),
-            )
+            const deps = depsForSrc[normalizePath(chunk.facadeModuleId!)]
             for (const { exportsData, file, id, ...info } of deps) {
               addOptimizedDepInfo(metadata, 'optimized', {
                 id,

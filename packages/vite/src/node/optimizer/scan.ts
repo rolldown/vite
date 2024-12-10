@@ -293,7 +293,7 @@ async function prepareRolldownScanner(
 
   const plugins = await asyncFlatten(arraify(pluginsFromConfig))
 
-  plugins.push(rolldownScanPlugin(environment, deps, missing, entries))
+  plugins.push(...rolldownScanPlugin(environment, deps, missing, entries))
 
   async function build() {
     await scan({
@@ -350,7 +350,7 @@ function rolldownScanPlugin(
   depImports: Record<string, string>,
   missing: Record<string, string>,
   entries: string[],
-): Plugin {
+): Plugin[] {
   const seen = new Map<string, string | undefined>()
   async function resolveId(
     id: string,
@@ -533,182 +533,203 @@ function rolldownScanPlugin(
 
   const ASSET_TYPE_RE = new RegExp(`\\.(${KNOWN_ASSET_TYPES.join('|')})$`)
 
-  return {
-    name: 'vite:dep-scan',
-    async resolveId(id, importer) {
-      // external urls
-      if (externalRE.test(id)) {
-        return {
-          id,
-          external: true,
+  return [
+    {
+      name: 'vite:dep-scan:resolve',
+      async resolveId(id, importer) {
+        // external urls
+        if (externalRE.test(id)) {
+          return {
+            id,
+            external: true,
+          }
         }
-      }
 
-      // data urls
-      if (dataUrlRE.test(id)) {
-        return {
-          id,
-          external: true,
+        // data urls
+        if (dataUrlRE.test(id)) {
+          return {
+            id,
+            external: true,
+          }
         }
-      }
 
-      // local scripts (`<script>` in Svelte and `<script setup>` in Vue)
-      if (virtualModuleRE.test(id)) {
-        return id
-      }
+        // local scripts (`<script>` in Svelte and `<script setup>` in Vue)
+        if (virtualModuleRE.test(id)) {
+          return id
+        }
 
-      // Make sure virtual module importer can be resolve
-      importer =
-        importer && virtualModuleRE.test(importer)
-          ? importer.replace(virtualModulePrefix, '')
-          : importer
+        // Make sure virtual module importer can be resolve
+        importer =
+          importer && virtualModuleRE.test(importer)
+            ? importer.replace(virtualModulePrefix, '')
+            : importer
 
-      // html types: extract script contents -----------------------------------
-      if (htmlTypesRE.test(id)) {
-        const resolved = await resolve(id, importer)
-        if (!resolved) return
-        // It is possible for the scanner to scan html types in node_modules.
-        // If we can optimize this html type, skip it so it's handled by the
-        // bare import resolve, and recorded as optimization dep.
-        if (
-          isInNodeModules(resolved) &&
-          isOptimizable(resolved, optimizeDepsOptions)
-        )
-          return
-        return resolved
-      }
+        // html types: extract script contents -----------------------------------
+        if (htmlTypesRE.test(id)) {
+          const resolved = await resolve(id, importer)
+          if (!resolved) return
+          // It is possible for the scanner to scan html types in node_modules.
+          // If we can optimize this html type, skip it so it's handled by the
+          // bare import resolve, and recorded as optimization dep.
+          if (
+            isInNodeModules(resolved) &&
+            isOptimizable(resolved, optimizeDepsOptions)
+          )
+            return
+          return resolved
+        }
 
-      // bare imports: record and externalize ----------------------------------
-      // avoid matching windows volume
-      if (/^[\w@][^:]/.test(id)) {
-        if (moduleListContains(exclude, id)) {
+        // bare imports: record and externalize ----------------------------------
+        // avoid matching windows volume
+        if (/^[\w@][^:]/.test(id)) {
+          if (moduleListContains(exclude, id)) {
+            return externalUnlessEntry({ path: id })
+          }
+          if (depImports[id]) {
+            return externalUnlessEntry({ path: id })
+          }
+          const resolved = await resolve(id, importer, {
+            custom: {
+              depScan: importer ? { loader: scripts[importer]?.loader } : {},
+            },
+          })
+          if (resolved) {
+            if (shouldExternalizeDep(resolved, id)) {
+              return externalUnlessEntry({ path: id })
+            }
+            if (isInNodeModules(resolved) || include?.includes(id)) {
+              // dependency or forced included, externalize and stop crawling
+              if (isOptimizable(resolved, optimizeDepsOptions)) {
+                depImports[id] = resolved
+              }
+              return externalUnlessEntry({ path: id })
+            } else if (isScannable(resolved, optimizeDepsOptions.extensions)) {
+              // linked package, keep crawling
+              return path.resolve(resolved)
+            } else {
+              return externalUnlessEntry({ path: id })
+            }
+          } else {
+            missing[id] = normalizePath(importer!)
+          }
+        }
+
+        // Externalized file types -----------------------------------------------
+        // these are done on raw ids using esbuild's native regex filter so it
+        // should be faster than doing it in the catch-all via js
+        // they are done after the bare import resolve because a package name
+        // may end with these extensions
+
+        // css
+        if (CSS_LANGS_RE.test(id)) {
           return externalUnlessEntry({ path: id })
         }
-        if (depImports[id]) {
+
+        // json & wasm
+        if (/\.(?:json|json5|wasm)$/.test(id)) {
           return externalUnlessEntry({ path: id })
         }
+
+        // known asset types
+        if (ASSET_TYPE_RE.test(id)) {
+          return externalUnlessEntry({ path: id })
+        }
+
+        // known vite query types: ?worker, ?raw
+        if (SPECIAL_QUERY_RE.test(id)) {
+          return {
+            id,
+            external: true,
+          }
+        }
+
+        // catch all -------------------------------------------------------------
+
+        // use vite resolver to support urls and omitted extensions
         const resolved = await resolve(id, importer, {
           custom: {
             depScan: importer ? { loader: scripts[importer]?.loader } : {},
           },
         })
         if (resolved) {
-          if (shouldExternalizeDep(resolved, id)) {
+          if (
+            shouldExternalizeDep(resolved, id) ||
+            !isScannable(resolved, optimizeDepsOptions.extensions)
+          ) {
             return externalUnlessEntry({ path: id })
           }
-          if (isInNodeModules(resolved) || include?.includes(id)) {
-            // dependency or forced included, externalize and stop crawling
-            if (isOptimizable(resolved, optimizeDepsOptions)) {
-              depImports[id] = resolved
+          return path.resolve(cleanUrl(resolved))
+        }
+
+        // resolve failed... probably unsupported type
+        return externalUnlessEntry({ path: id })
+      },
+    },
+    {
+      name: 'vite:dep-scan:load:html',
+      load: {
+        filter: { id: [virtualModuleRE, htmlTypesRE] },
+        async handler(id) {
+          if (virtualModuleRE.test(id)) {
+            const script = scripts[id.replace(virtualModulePrefix, '')]
+            return {
+              code: script.contents,
+              moduleType: script.loader,
             }
-            return externalUnlessEntry({ path: id })
-          } else if (isScannable(resolved, optimizeDepsOptions.extensions)) {
-            // linked package, keep crawling
-            return path.resolve(resolved)
-          } else {
-            return externalUnlessEntry({ path: id })
           }
-        } else {
-          missing[id] = normalizePath(importer!)
-        }
-      }
 
-      // Externalized file types -----------------------------------------------
-      // these are done on raw ids using esbuild's native regex filter so it
-      // should be faster than doing it in the catch-all via js
-      // they are done after the bare import resolve because a package name
-      // may end with these extensions
-
-      // css
-      if (CSS_LANGS_RE.test(id)) {
-        return externalUnlessEntry({ path: id })
-      }
-
-      // json & wasm
-      if (/\.(?:json|json5|wasm)$/.test(id)) {
-        return externalUnlessEntry({ path: id })
-      }
-
-      // known asset types
-      if (ASSET_TYPE_RE.test(id)) {
-        return externalUnlessEntry({ path: id })
-      }
-
-      // known vite query types: ?worker, ?raw
-      if (SPECIAL_QUERY_RE.test(id)) {
-        return {
-          id,
-          external: true,
-        }
-      }
-
-      // catch all -------------------------------------------------------------
-
-      // use vite resolver to support urls and omitted extensions
-      const resolved = await resolve(id, importer, {
-        custom: {
-          depScan: importer ? { loader: scripts[importer]?.loader } : {},
+          // extract scripts inside HTML-like files and treat it as a js module
+          if (htmlTypesRE.test(id)) {
+            return {
+              code: await htmlTypeOnLoadCallback(id),
+              moduleType: 'js',
+            }
+          }
         },
-      })
-      if (resolved) {
-        if (
-          shouldExternalizeDep(resolved, id) ||
-          !isScannable(resolved, optimizeDepsOptions.extensions)
-        ) {
-          return externalUnlessEntry({ path: id })
-        }
-        return path.resolve(cleanUrl(resolved))
-      }
-
-      // resolve failed... probably unsupported type
-      return externalUnlessEntry({ path: id })
+      },
     },
-    async load(id) {
-      if (virtualModuleRE.test(id)) {
-        const script = scripts[id.replace(virtualModulePrefix, '')]
-        return {
-          code: script.contents,
-          moduleType: script.loader,
-        }
-      }
-
-      // extract scripts inside HTML-like files and treat it as a js module
-      if (htmlTypesRE.test(id)) {
-        return {
-          code: await htmlTypeOnLoadCallback(id),
-          moduleType: 'js',
-        }
-      }
-
-      // for jsx/tsx, we need to access the content and check for
-      // presence of import.meta.glob, since it results in import relationships
-      // but isn't crawled by esbuild.
-      if (JS_TYPES_RE.test(id)) {
-        let ext = path.extname(id).slice(1)
-        if (ext === 'mjs') ext = 'js'
-
-        const esbuildConfig = environment.config.esbuild
-        let contents = await fsp.readFile(id, 'utf-8')
-        if (ext.endsWith('x') && esbuildConfig && esbuildConfig.jsxInject) {
-          contents = esbuildConfig.jsxInject + `\n` + contents
-        }
-
-        const loader = ext as 'js' | 'ts' | 'jsx' | 'tsx'
-
-        if (contents.includes('import.meta.glob')) {
-          return {
-            moduleType: 'js',
-            code: await doTransformGlobImport(contents, id, loader),
+    // for jsx/tsx, we need to access the content and check for
+    // presence of import.meta.glob, since it results in import relationships
+    // but isn't crawled by esbuild.
+    ...(environment.config.esbuild && environment.config.esbuild.jsxInject
+      ? [
+          {
+            name: 'vite:dep-scan:transform:jsx-inject',
+            transform: {
+              filter: {
+                id: /\.[jt]sx$/,
+              },
+              handler(code) {
+                const esbuildConfig = environment.config.esbuild
+                if (esbuildConfig && esbuildConfig.jsxInject) {
+                  code = esbuildConfig.jsxInject + `\n` + code
+                }
+                return code
+              },
+            },
+          } satisfies Plugin,
+        ]
+      : []),
+    {
+      name: 'vite:dep-scan:transform:js-glob',
+      transform: {
+        filter: {
+          code: 'import.meta.glob',
+        },
+        async handler(code, id) {
+          if (JS_TYPES_RE.test(id)) {
+            let ext = path.extname(id).slice(1)
+            if (ext === 'mjs') ext = 'js'
+            const loader = ext as 'js' | 'ts' | 'jsx' | 'tsx'
+            return {
+              moduleType: 'js',
+              code: await doTransformGlobImport(code, id, loader),
+            }
           }
-        }
-
-        return {
-          moduleType: loader,
-          code: contents,
-        }
-      }
+        },
+      },
     },
-  }
+  ]
 }
 
 /**
