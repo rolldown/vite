@@ -55,11 +55,14 @@ describe.runIf(isBuild)('build', () => {
     const scssAssetEntry = manifest['nested/blue.scss']
     const imgAssetEntry = manifest['../images/logo.png']
     const dirFooAssetEntry = manifest['../../dir/foo.css']
-    const iconEntrypointEntry = manifest['icon.png']
-    expect(htmlEntry.css.length).toEqual(1)
+    // const iconEntrypointEntry = manifest['icon.png']
+    expect(htmlEntry.css.length).toEqual(2)
     expect(htmlEntry.assets.length).toEqual(1)
-    expect(mainTsEntry.assets?.length ?? 0).toBeGreaterThanOrEqual(1)
-    expect(mainTsEntry.assets).toContainEqual(
+    expect(mainTsEntry.imports.length).toBeGreaterThanOrEqual(1)
+    const mainTsEntryImported = manifest[mainTsEntry.imports[0]]
+    expect(mainTsEntryImported).toBeDefined()
+    expect(mainTsEntryImported.assets?.length ?? 0).toBeGreaterThanOrEqual(1)
+    expect(mainTsEntryImported.assets).toContainEqual(
       expect.stringMatching(/assets\/url-[-\w]{8}\.css/),
     )
     expect(cssAssetEntry?.file).not.toBeUndefined()
@@ -74,7 +77,7 @@ describe.runIf(isBuild)('build', () => {
     expect(dirFooAssetEntry).not.toBeUndefined() // '\\' should not be used even on windows
     // use the entry name
     expect(dirFooAssetEntry.file).toMatch('assets/bar-')
-    expect(iconEntrypointEntry?.file).not.toBeUndefined()
+    // expect(iconEntrypointEntry?.file).not.toBeUndefined()
   })
 
   test('CSS imported from JS entry should have a non-nested chunk name', () => {

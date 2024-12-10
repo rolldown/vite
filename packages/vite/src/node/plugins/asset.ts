@@ -2,7 +2,7 @@ import path from 'node:path'
 import fsp from 'node:fs/promises'
 import { Buffer } from 'node:buffer'
 import * as mrmime from 'mrmime'
-import type { NormalizedOutputOptions, RenderedChunk } from 'rollup'
+import type { NormalizedOutputOptions, RenderedChunk } from 'rolldown'
 import MagicString from 'magic-string'
 import colors from 'picocolors'
 import {
@@ -42,8 +42,17 @@ const svgExtRE = /\.svg(?:$|\?)/
 
 const assetCache = new WeakMap<Environment, Map<string, string>>()
 
-/** a set of referenceId for entry CSS assets for each environment */
-export const cssEntriesMap = new WeakMap<Environment, Set<string>>()
+// chunk.name is the basename for the asset ignoring the directory structure
+// For the manifest, we need to preserve the original file path and isEntry
+// for CSS assets. We keep a map from referenceId to this information.
+export interface GeneratedAssetMeta {
+  originalFileName: string | undefined
+  isEntry?: boolean
+}
+export const generatedAssetsMap = new WeakMap<
+  Environment,
+  Map<string, GeneratedAssetMeta>
+>()
 
 // add own dictionary entry by directly assigning mrmime
 export function registerCustomMime(): void {
@@ -138,6 +147,8 @@ export function renderAssetUrlInJS(
 export function assetPlugin(config: ResolvedConfig): Plugin {
   registerCustomMime()
 
+  const assetModuleId = new Set<string>()
+
   return {
     name: 'vite:asset',
 
@@ -145,7 +156,7 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
 
     buildStart() {
       assetCache.set(this.environment, new Map())
-      cssEntriesMap.set(this.environment, new Set())
+      generatedAssetsMap.set(this.environment, new Map())
     },
 
     resolveId(id) {
@@ -192,6 +203,10 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
         }
       }
 
+      // Note: rolldown does not support meta, use a Set instead of it for now
+      if (config.command === 'build') {
+        assetModuleId.add(id)
+      }
       return {
         code: `export default ${JSON.stringify(encodeURIPath(url))}`,
         // Force rollup to keep this module from being shared between other entry points if it's an entrypoint.
@@ -228,7 +243,8 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
           chunk.isEntry &&
           chunk.moduleIds.length === 1 &&
           config.assetsInclude(chunk.moduleIds[0]) &&
-          this.getModuleInfo(chunk.moduleIds[0])?.meta['vite:asset']
+          assetModuleId.has(chunk.moduleIds[0])
+          // this.getModuleInfo(chunk.moduleIds[0])?.meta['vite:asset']
         ) {
           delete bundle[file]
         }
@@ -401,6 +417,8 @@ async function fileToBuiltUrl(
       originalFileName,
       source: content,
     })
+    generatedAssetsMap.get(environment)!.set(referenceId, { originalFileName })
+
     url = `__VITE_ASSET__${referenceId}__${postfix ? `$_${postfix}__` : ``}`
   }
 

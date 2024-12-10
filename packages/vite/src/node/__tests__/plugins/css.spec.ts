@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
+import type { Plugin } from 'rolldown'
 import { resolveConfig } from '../../config'
 import type { InlineConfig } from '../../config'
 import {
@@ -210,15 +211,15 @@ async function createCssPluginTransform(inlineConfig: InlineConfig = {}) {
   const config = await resolveConfig(inlineConfig, 'serve')
   const environment = new PartialEnvironment('client', config)
 
-  const { transform, buildStart } = cssPlugin(config)
+  const { transform, buildStart } = cssPlugin(config) as Plugin
 
   // @ts-expect-error buildStart is function
   await buildStart.call({})
 
   return {
     async transform(code: string, id: string) {
-      // @ts-expect-error transform is function
-      return await transform.call(
+      // @ts-expect-error transform.handler is function
+      return await transform.handler.call(
         {
           addWatchFile() {
             return
@@ -309,8 +310,21 @@ require("other-module");`
 
     const replacer = getEmptyChunkReplacer(['pure_css_chunk.js'], 'cjs')
     const newCode = replacer(code)
+    expect(newCode.length).toBe(code.length)
     expect(newCode).toMatchInlineSnapshot(
       `"require("some-module"),/* empty css               */require("other-module");"`,
+    )
+    // So there should be no pure css chunk anymore
+    expect(newCode).not.toContain('pure_css_chunk.js')
+  })
+
+  test('replaces require call in minified code that uses comma operator 2', () => {
+    const code = 'require("pure_css_chunk.js"),console.log();'
+    const replacer = getEmptyChunkReplacer(['pure_css_chunk.js'], 'cjs')
+    const newCode = replacer(code)
+    expect(newCode.length).toBe(code.length)
+    expect(newCode).toMatchInlineSnapshot(
+      `"/* empty css               */console.log();"`,
     )
     // So there should be no pure css chunk anymore
     expect(newCode).not.toContain('pure_css_chunk.js')
@@ -321,9 +335,13 @@ require("other-module");`
       'require("some-module"),require("pure_css_chunk.js");const v=require("other-module");'
 
     const replacer = getEmptyChunkReplacer(['pure_css_chunk.js'], 'cjs')
-    expect(replacer(code)).toMatchInlineSnapshot(
+    const newCode = replacer(code)
+    expect(newCode.length).toBe(code.length)
+    expect(newCode).toMatchInlineSnapshot(
       `"require("some-module");/* empty css               */const v=require("other-module");"`,
     )
+    // So there should be no pure css chunk anymore
+    expect(newCode).not.toContain('pure_css_chunk.js')
   })
 })
 
