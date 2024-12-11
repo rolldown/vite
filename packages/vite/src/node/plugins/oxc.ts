@@ -8,7 +8,13 @@ import type { RawSourceMap } from '@ampproject/remapping'
 import type { SourceMap } from 'rolldown'
 import type { FSWatcher } from 'dep-types/chokidar'
 import { TSConfckParseError } from 'tsconfck'
-import { combineSourcemaps, createFilter, ensureWatchedFile } from '../utils'
+import type { RollupError } from 'rollup'
+import {
+  combineSourcemaps,
+  createFilter,
+  ensureWatchedFile,
+  generateCodeFrame,
+} from '../utils'
 import type { ResolvedConfig } from '../config'
 import type { Plugin, PluginContext } from '../plugin'
 import { cleanUrl } from '../../shared/utils'
@@ -158,7 +164,23 @@ export async function transformWithOxc(
   const result = transform(filename, code, resolvedOptions)
 
   if (result.errors.length > 0) {
-    throw new Error(result.errors[0])
+    const firstError = result.errors[0]
+    const error: RollupError = new Error(firstError.message)
+    let frame = ''
+    frame += firstError.labels
+      .map(
+        (l) =>
+          (l.message ? `${l.message}\n` : '') +
+          generateCodeFrame(code, l.start, l.end),
+      )
+      .join('\n')
+    if (firstError.helpMessage) {
+      frame += '\n' + firstError.helpMessage
+    }
+    error.frame = frame
+    error.pos =
+      firstError.labels.length > 0 ? firstError.labels[0].start : undefined
+    throw error
   }
 
   let map: SourceMap
