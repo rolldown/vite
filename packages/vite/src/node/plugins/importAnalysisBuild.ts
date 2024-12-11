@@ -711,8 +711,7 @@ export function buildImportAnalysisPlugin(config: ResolvedConfig): [Plugin] {
                 nextMap as RawSourceMap,
                 chunk.map as RawSourceMap,
               ]) as SourceMap
-              // TODO: rolldown's sourcemap type does not have toUrl function
-              // map.toUrl = () => genSourceMapUrl(map)
+              map.toUrl = () => genSourceMapUrl(map)
               chunk.map = map
 
               if (buildSourcemap === 'inline') {

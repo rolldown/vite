@@ -166,8 +166,7 @@ function emitSourcemapForWorkerEntry(
       config.build.sourcemap === 'hidden' ||
       config.build.sourcemap === true
     ) {
-      // TODO: rolldown does not support sourcemap.toString()
-      const data = JSON.stringify(sourcemap)
+      const data = sourcemap.toString()
       const mapFileName = chunk.fileName + '.map'
       saveEmitWorkerAsset(config, {
         fileName: mapFileName,
