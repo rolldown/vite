@@ -85,8 +85,7 @@ describe('definePlugin', () => {
     )
   })
 
-  // NOTE: skipped because of https://github.com/oxc-project/oxc/issues/7594
-  test.skip('preserve import.meta.env.UNKNOWN with override', async () => {
+  test('preserve import.meta.env.UNKNOWN with override', async () => {
     const transform = await createDefinePluginTransform({
       'import.meta.env.UNKNOWN': 'import.meta.env.UNKNOWN',
     })
