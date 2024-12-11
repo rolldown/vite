@@ -17,7 +17,6 @@ export default defineConfig({
       './playground/legacy/**/*.spec.[tj]s', // system format
       ...(isBuild
         ? [
-            './playground/external/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2041
             './playground/object-hooks/**/*.spec.[tj]s', // object hook sequential
             './playground/optimize-deps/**/*.spec.[tj]s', // https://github.com/rolldown/rolldown/issues/2031
             './playground/tsconfig-json/__tests__/**/*.spec.[tj]s', // decorators is not supported by oxc
