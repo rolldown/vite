@@ -127,11 +127,7 @@ export async function resolvePlugins(
       : null,
     enableNativePlugin
       ? nativeJsonPlugin({
-          // TODO: support `json.stringify: 'auto'` and `json.namedExports`
-          stringify:
-            !config.json?.stringify || config.json.stringify === 'auto'
-              ? false
-              : config.json?.stringify,
+          ...config.json,
           isBuild,
         })
       : jsonPlugin(config.json, isBuild),
