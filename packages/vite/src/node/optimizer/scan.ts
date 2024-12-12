@@ -2,7 +2,6 @@ import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
-import type { Loader } from 'esbuild'
 import { scan, transform } from 'rolldown/experimental'
 import type { PartialResolvedId, Plugin } from 'rolldown'
 import colors from 'picocolors'
@@ -334,6 +333,8 @@ function globEntries(pattern: string | string[], environment: ScanEnvironment) {
     ],
   })
 }
+
+type Loader = 'js' | 'ts' | 'jsx' | 'tsx'
 
 export const scriptRE =
   /(<script(?:\s+[a-z_:][-\w:]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^"'<>=\s]+))?)*\s*>)(.*?)<\/script>/gis

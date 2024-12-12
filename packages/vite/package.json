@@ -85,7 +85,6 @@
   },
   "//": "READ CONTRIBUTING.md to understand what to put under deps vs. devDeps!",
   "dependencies": {
-    "esbuild": "^0.24.2",
     "lightningcss": "^1.28.2",
     "postcss": "^8.4.49",
     "rolldown": "0.15.0-snapshot-3cea4f5-20241211003613",
@@ -119,6 +118,7 @@
     "dotenv": "^16.4.7",
     "dotenv-expand": "^12.0.1",
     "es-module-lexer": "^1.6.0",
+    "esbuild": "^0.24.2",
     "escape-html": "^1.0.3",
     "estree-walker": "^3.0.3",
     "etag": "^1.8.1",
@@ -156,6 +156,7 @@
   },
   "peerDependencies": {
     "@types/node": "^18.0.0 || ^20.0.0 || >=22.0.0",
+    "esbuild": "^0.24.0",
     "jiti": ">=1.21.0",
     "less": "*",
     "lightningcss": "^1.21.0",
@@ -169,6 +170,9 @@
   },
   "peerDependenciesMeta": {
     "@types/node": {
+      "optional": true
+    },
+    "esbuild": {
       "optional": true
     },
     "jiti": {

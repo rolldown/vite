@@ -4,7 +4,6 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import { performance } from 'node:perf_hooks'
 import colors from 'picocolors'
-import type { BuildOptions as EsbuildBuildOptions } from 'esbuild'
 import { init, parse } from 'es-module-lexer'
 import { isDynamicPattern } from 'tinyglobby'
 import {
@@ -13,6 +12,7 @@ import {
   type OutputOptions as RollupOutputOptions,
   rolldown,
 } from 'rolldown'
+import type { DepsOptimizerEsbuildOptions } from 'types/internal/esbuildOptions'
 import type { ResolvedConfig } from '../config'
 import {
   arraify,
@@ -28,10 +28,10 @@ import {
   tryStatSync,
   unique,
 } from '../utils'
-import { transformWithEsbuild } from '../plugins/esbuild'
 import { METADATA_FILENAME } from '../constants'
 import { isWindows } from '../../shared/utils'
 import type { Environment } from '../environment'
+import { transformWithOxc } from '../plugins/oxc'
 import { ScanEnvironment, scanImports } from './scan'
 import { createOptimizeDepsIncludeResolver, expandGlobIds } from './resolve'
 import {
@@ -96,19 +96,7 @@ export interface DepOptimizationConfig {
    *
    * https://esbuild.github.io/api
    */
-  esbuildOptions?: Omit<
-    EsbuildBuildOptions,
-    | 'bundle'
-    | 'entryPoints'
-    | 'external'
-    | 'write'
-    | 'watch'
-    | 'outdir'
-    | 'outfile'
-    | 'outbase'
-    | 'outExtension'
-    | 'metafile'
-  >
+  esbuildOptions?: DepsOptimizerEsbuildOptions
   rollupOptions?: Omit<RollupOptions, 'input' | 'logLevel' | 'output'> & {
     output?: Omit<
       RollupOutputOptions,
@@ -1102,14 +1090,18 @@ export async function extractExportsData(
   try {
     parseResult = parse(entryContent)
   } catch {
-    const loader = rollupOptions.moduleTypes?.[path.extname(filePath)] || 'jsx'
+    const lang = rollupOptions.moduleTypes?.[path.extname(filePath)] || 'jsx'
     debug?.(
-      `Unable to parse: ${filePath}.\n Trying again with a ${loader} transform.`,
+      `Unable to parse: ${filePath}.\n Trying again with a ${lang} transform.`,
     )
-    const transformed = await transformWithEsbuild(
+    if (lang !== 'jsx' && lang !== 'tsx' && lang !== 'ts') {
+      throw new Error(`Unable to parse : ${filePath}.`)
+    }
+    const transformed = await transformWithOxc(
+      undefined,
       entryContent,
       filePath,
-      { loader },
+      { lang },
       undefined,
       environment.config,
     )

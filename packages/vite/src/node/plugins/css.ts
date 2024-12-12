@@ -23,7 +23,6 @@ import type Stylus from 'stylus'
 import type Less from 'less'
 import type { Alias } from 'dep-types/alias'
 import type { LightningCSSOptions } from 'types/internal/lightningcssOptions'
-import type { TransformOptions } from 'esbuild'
 import type { RawSourceMap } from '@ampproject/remapping'
 import { WorkerWithFallback } from 'artichokie'
 import { globSync } from 'tinyglobby'
@@ -37,6 +36,7 @@ import type {
   TransformAttributeResult as LightningCssTransformAttributeResult,
   TransformResult as LightningCssTransformResult,
 } from 'lightningcss'
+import type { EsbuildTransformOptions } from 'types/internal/esbuildOptions'
 import { getCodeWithSourcemap, injectSourcesContent } from '../server/sourcemap'
 import type { EnvironmentModuleNode } from '../server/moduleGraph'
 import {
@@ -2029,8 +2029,8 @@ async function minifyCSS(
 
 function resolveMinifyCssEsbuildOptions(
   options: ESBuildOptions,
-): TransformOptions {
-  const base: TransformOptions = {
+): EsbuildTransformOptions {
+  const base: EsbuildTransformOptions = {
     charset: options.charset ?? 'utf8',
     logLevel: options.logLevel,
     logLimit: options.logLimit,

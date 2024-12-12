@@ -42,7 +42,7 @@ export interface OxcOptions extends OxcTransformOptions {
 }
 
 export async function transformWithOxc(
-  ctx: PluginContext,
+  ctx: PluginContext | undefined,
   code: string,
   filename: string,
   options?: OxcTransformOptions,
@@ -110,7 +110,7 @@ export async function transformWithOxc(
           break
         case 'preserve':
           if (lang === 'tsx') {
-            ctx.warn('The tsconfig jsx preserve is not supported by oxc')
+            ctx?.warn('The tsconfig jsx preserve is not supported by oxc')
           }
           break
         default:
@@ -151,7 +151,7 @@ export async function transformWithOxc(
           resolvedOptions.typescript ??= {}
           resolvedOptions.typescript.onlyRemoveTypeImports = false
         } else {
-          ctx.warn(
+          ctx?.warn(
             `preserveValueImports=${preserveValueImports} + importsNotUsedAsValues=${importsNotUsedAsValues} is not supported by oxc.` +
               'Please migrate to the new verbatimModuleSyntax option.',
           )
