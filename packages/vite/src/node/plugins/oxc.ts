@@ -1,11 +1,12 @@
 import path from 'node:path'
+import { createRequire } from 'node:module'
 import type {
   TransformOptions as OxcTransformOptions,
   TransformResult as OxcTransformResult,
 } from 'rolldown/experimental'
 import { transform } from 'rolldown/experimental'
 import type { RawSourceMap } from '@ampproject/remapping'
-import type { SourceMap } from 'rolldown'
+import { type InternalModuleFormat, type SourceMap, rolldown } from 'rolldown'
 import type { FSWatcher } from 'dep-types/chokidar'
 import { TSConfckParseError } from 'tsconfck'
 import type { RollupError } from 'rollup'
@@ -22,6 +23,12 @@ import type { Logger } from '..'
 import type { ViteDevServer } from '../server'
 import type { ESBuildOptions } from './esbuild'
 import { loadTsconfigJsonForFile } from './esbuild'
+
+// IIFE content looks like `var MyLib = (function() {`.
+const IIFE_BEGIN_RE =
+  /(?:const|var)\s+\S+\s*=\s*\(?function\([^()]*\)\s*\{\s*"use strict";/
+// UMD content looks like `(this, function(exports) {`.
+const UMD_BEGIN_RE = /\(this,\s*function\([^()]*\)\s*\{\s*"use strict";/
 
 const jsxExtensionsRE = /\.(?:j|t)sx\b/
 const validExtensionRE = /\.\w+$/
@@ -265,6 +272,181 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
       }
     },
   }
+}
+
+export const buildOxcPlugin = (): Plugin => {
+  return {
+    name: 'vite:oxc-transpile',
+    applyToEnvironment(environment) {
+      return environment.config.oxc !== false
+    },
+    async renderChunk(code, chunk, opts) {
+      // @ts-expect-error injected by @vitejs/plugin-legacy
+      if (opts.__vite_skip_esbuild__) {
+        return null
+      }
+
+      const config = this.environment.config
+      const options = resolveOxcTranspileOptions(config, opts.format)
+
+      if (!options) {
+        return null
+      }
+
+      const res = await transformWithOxc(
+        this,
+        code,
+        chunk.fileName,
+        options,
+        undefined,
+        config,
+      )
+
+      const runtimeHelpers = Object.entries(res.helpersUsed)
+      if (runtimeHelpers.length > 0) {
+        const helpersCode = await generateRuntimeHelpers(runtimeHelpers)
+        switch (opts.format) {
+          case 'es': {
+            if (res.code.startsWith('#!')) {
+              let secondLinePos = res.code.indexOf('\n')
+              if (secondLinePos === -1) {
+                secondLinePos = 0
+              }
+              // inject after hashbang
+              res.code =
+                res.code.slice(0, secondLinePos) +
+                helpersCode +
+                res.code.slice(secondLinePos)
+              if (res.map) {
+                res.map.mappings = res.map.mappings.replace(';', ';;')
+              }
+            } else {
+              res.code = helpersCode + res.code
+              if (res.map) {
+                res.map.mappings = ';' + res.map.mappings
+              }
+            }
+            break
+          }
+          case 'cjs': {
+            if (/^\s*['"]use strict['"];/.test(res.code)) {
+              // inject after use strict
+              res.code = res.code.replace(
+                /^\s*['"]use strict['"];/,
+                (m) => m + helpersCode,
+              )
+              // no need to update sourcemap because the runtime helpers are injected in the same line with "use strict"
+            } else {
+              res.code = helpersCode + res.code
+              if (res.map) {
+                res.map.mappings = ';' + res.map.mappings
+              }
+            }
+            break
+          }
+          // runtime helpers needs to be injected inside the UMD and IIFE wrappers
+          // to avoid collision with other globals.
+          // We inject the helpers inside the wrappers.
+          // e.g. turn:
+          //    (function(){ /*actual content/* })()
+          // into:
+          //    (function(){ <runtime helpers> /*actual content/* })()
+          // Not using regex because it's too hard to rule out performance issues like #8738 #8099 #10900 #14065
+          // Instead, using plain string index manipulation (indexOf, slice) which is simple and performant
+          // We don't need to create a MagicString here because both the helpers and
+          // the headers don't modify the sourcemap
+          case 'iife':
+          case 'umd': {
+            const m = (
+              opts.format === 'iife' ? IIFE_BEGIN_RE : UMD_BEGIN_RE
+            ).exec(res.code)
+            if (!m) {
+              this.error('Unexpected IIFE format')
+              return
+            }
+            const pos = m.index + m.length
+            res.code =
+              res.code.slice(0, pos) + helpersCode + '\n' + res.code.slice(pos)
+            break
+          }
+          case 'app': {
+            throw new Error('format: "app" is not supported yet')
+            break
+          }
+          default: {
+            opts.format satisfies never
+          }
+        }
+      }
+
+      return res
+    },
+  }
+}
+
+export function resolveOxcTranspileOptions(
+  config: ResolvedConfig,
+  format: InternalModuleFormat,
+): OxcTransformOptions | null {
+  const target = config.build.target
+  if (!target || target === 'esnext') {
+    return null
+  }
+
+  return {
+    ...(config.oxc || {}),
+    helpers: { mode: 'External' },
+    lang: 'js',
+    sourceType: format === 'es' ? 'module' : 'script',
+    target: target || undefined,
+    sourcemap: !!config.build.sourcemap,
+  }
+}
+
+let rolldownDir: string
+
+async function generateRuntimeHelpers(
+  runtimeHelpers: readonly [string, string][],
+): Promise<string> {
+  if (!rolldownDir) {
+    let dir = createRequire(import.meta.url).resolve('rolldown')
+    while (dir && path.basename(dir) !== 'rolldown') {
+      dir = path.dirname(dir)
+    }
+    rolldownDir = dir
+  }
+
+  const bundle = await rolldown({
+    cwd: rolldownDir,
+    input: 'entrypoint',
+    platform: 'neutral',
+    plugins: [
+      {
+        name: 'entrypoint',
+        resolveId: {
+          filter: { id: /^entrypoint$/ },
+          handler: (id) => id,
+        },
+        load: {
+          filter: { id: /^entrypoint$/ },
+          handler() {
+            return runtimeHelpers
+              .map(
+                ([name, helper]) =>
+                  `export { default as ${name} } from ${JSON.stringify(helper)};`,
+              )
+              .join('\n')
+          },
+        },
+      },
+    ],
+  })
+  const output = await bundle.generate({
+    format: 'iife',
+    name: 'babelHelpers',
+    minify: true,
+  })
+  return output.output[0].code
 }
 
 export function convertEsbuildConfigToOxcConfig(

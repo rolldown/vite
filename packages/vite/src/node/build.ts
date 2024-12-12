@@ -44,7 +44,7 @@ import type {
 import { resolveConfig } from './config'
 import type { PartialEnvironment } from './baseEnvironment'
 import { buildReporterPlugin } from './plugins/reporter'
-import { buildEsbuildPlugin } from './plugins/esbuild'
+import { buildOxcPlugin } from './plugins/oxc'
 import { type TerserOptions, terserPlugin } from './plugins/terser'
 import {
   arraify,
@@ -492,7 +492,7 @@ export async function resolveBuildPlugins(config: ResolvedConfig): Promise<{
     ],
     post: [
       ...buildImportAnalysisPlugin(config),
-      ...(!enableNativePlugin ? [buildEsbuildPlugin()] : []),
+      ...(!enableNativePlugin ? [buildOxcPlugin()] : []),
       terserPlugin(config),
       ...(!config.isWorker
         ? [
