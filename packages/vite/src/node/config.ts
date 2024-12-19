@@ -1526,10 +1526,13 @@ export async function resolveConfig(
         ? false
         : {
             ...oxc,
-            jsx: {
-              development: !isProduction,
-              ...oxc?.jsx,
-            },
+            jsx:
+              typeof oxc?.jsx === 'string'
+                ? oxc.jsx
+                : {
+                    development: !isProduction,
+                    ...oxc?.jsx,
+                  },
           },
     server,
     builder,

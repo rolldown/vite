@@ -85,36 +85,39 @@ export async function transformWithOxc(
       const loadedCompilerOptions = loadedTsconfig.compilerOptions ?? {}
       // tsc compiler experimentalDecorators/target/useDefineForClassFields
 
-      resolvedOptions.jsx ??= {}
-      if (loadedCompilerOptions.jsxFactory) {
-        resolvedOptions.jsx.pragma = loadedCompilerOptions.jsxFactory
-      }
-      if (loadedCompilerOptions.jsxFragmentFactory) {
-        resolvedOptions.jsx.pragmaFrag =
-          loadedCompilerOptions.jsxFragmentFactory
-      }
-      if (loadedCompilerOptions.jsxImportSource) {
-        resolvedOptions.jsx.importSource = loadedCompilerOptions.jsxImportSource
-      }
+      if (loadedCompilerOptions.jsx === 'preserve') {
+        resolvedOptions.jsx = 'preserve'
+      } else {
+        const jsxOptions = {
+          ...(resolvedOptions.jsx === 'preserve' ? {} : resolvedOptions.jsx),
+        }
 
-      switch (loadedCompilerOptions.jsx) {
-        case 'react-jsxdev':
-          resolvedOptions.jsx.runtime = 'automatic'
-          resolvedOptions.jsx.development = true
-          break
-        case 'react':
-          resolvedOptions.jsx.runtime = 'classic'
-          break
-        case 'react-jsx':
-          resolvedOptions.jsx.runtime = 'automatic'
-          break
-        case 'preserve':
-          if (lang === 'tsx') {
-            ctx?.warn('The tsconfig jsx preserve is not supported by oxc')
-          }
-          break
-        default:
-          break
+        if (loadedCompilerOptions.jsxFactory) {
+          jsxOptions.pragma = loadedCompilerOptions.jsxFactory
+        }
+        if (loadedCompilerOptions.jsxFragmentFactory) {
+          jsxOptions.pragmaFrag = loadedCompilerOptions.jsxFragmentFactory
+        }
+        if (loadedCompilerOptions.jsxImportSource) {
+          jsxOptions.importSource = loadedCompilerOptions.jsxImportSource
+        }
+
+        switch (loadedCompilerOptions.jsx) {
+          case 'react-jsxdev':
+            jsxOptions.runtime = 'automatic'
+            jsxOptions.development = true
+            break
+          case 'react':
+            jsxOptions.runtime = 'classic'
+            break
+          case 'react-jsx':
+            jsxOptions.runtime = 'automatic'
+            break
+          default:
+            break
+        }
+
+        resolvedOptions.jsx = jsxOptions
       }
 
       /**
@@ -239,12 +242,14 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
     },
     async transform(code, id) {
       if (filter(id) || filter(cleanUrl(id))) {
+        const oxcTransformJsxOptions = oxcTransformOptions.jsx
         // disable refresh at ssr
         if (
           this.environment.config.consumer === 'server' &&
-          oxcTransformOptions.jsx?.refresh
+          typeof oxcTransformJsxOptions === 'object' &&
+          oxcTransformJsxOptions.refresh
         ) {
-          oxcTransformOptions.jsx.refresh = false
+          oxcTransformJsxOptions.refresh = false
         }
         if (
           (jsxFilter(id) || jsxFilter(cleanUrl(id))) &&
@@ -445,6 +450,8 @@ async function generateRuntimeHelpers(
   return output.output[0].code
 }
 
+type OxcJsxOptions = Exclude<OxcOptions['jsx'], string | undefined>
+
 export function convertEsbuildConfigToOxcConfig(
   esbuildConfig: ESBuildOptions,
   logger: Logger,
@@ -456,38 +463,40 @@ export function convertEsbuildConfigToOxcConfig(
     jsxInject,
     include,
     exclude,
-    jsx: {},
   }
 
-  switch (esbuildTransformOptions.jsx) {
-    case 'automatic':
-      oxcOptions.jsx!.runtime = 'automatic'
-      break
+  if (esbuildTransformOptions.jsx === 'preserve') {
+    oxcOptions.jsx = 'preserve'
+  } else {
+    const jsxOptions: OxcJsxOptions = {}
 
-    case 'transform':
-      oxcOptions.jsx!.runtime = 'classic'
-      break
+    switch (esbuildTransformOptions.jsx) {
+      case 'automatic':
+        jsxOptions.runtime = 'automatic'
+        break
+      case 'transform':
+        jsxOptions.runtime = 'classic'
+        break
+      default:
+        break
+    }
 
-    case 'preserve':
-      logger.warn('The esbuild jsx preserve is not supported by oxc')
-      break
+    if (esbuildTransformOptions.jsxDev) {
+      jsxOptions.development = true
+    }
+    if (esbuildTransformOptions.jsxFactory) {
+      jsxOptions.pragma = esbuildTransformOptions.jsxFactory
+    }
+    if (esbuildTransformOptions.jsxFragment) {
+      jsxOptions.pragmaFrag = esbuildTransformOptions.jsxFragment
+    }
+    if (esbuildTransformOptions.jsxImportSource) {
+      jsxOptions.importSource = esbuildTransformOptions.jsxImportSource
+    }
 
-    default:
-      break
+    oxcOptions.jsx = jsxOptions
   }
 
-  if (esbuildTransformOptions.jsxDev) {
-    oxcOptions.jsx!.development = true
-  }
-  if (esbuildTransformOptions.jsxFactory) {
-    oxcOptions.jsx!.pragma = esbuildTransformOptions.jsxFactory
-  }
-  if (esbuildTransformOptions.jsxFragment) {
-    oxcOptions.jsx!.pragmaFrag = esbuildTransformOptions.jsxFragment
-  }
-  if (esbuildTransformOptions.jsxImportSource) {
-    oxcOptions.jsx!.importSource = esbuildTransformOptions.jsxImportSource
-  }
   if (esbuildTransformOptions.loader) {
     if (['js', 'jsx', 'ts', 'tsx'].includes(esbuildTransformOptions.loader)) {
       oxcOptions.lang = esbuildTransformOptions.loader as
