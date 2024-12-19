@@ -3,8 +3,11 @@ export interface ChunkMetadata {
   importedCss: Set<string>
 }
 
-declare module 'rollup' {
+declare module 'rolldown' {
   export interface RenderedChunk {
+    viteMetadata?: ChunkMetadata
+  }
+  export interface OutputChunk {
     viteMetadata?: ChunkMetadata
   }
 }

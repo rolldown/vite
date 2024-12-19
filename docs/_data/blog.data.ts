@@ -10,7 +10,7 @@ interface Post {
 }
 
 declare const data: Post[]
-export { data }
+export { type data }
 
 export default createContentLoader('blog/*.md', {
   // excerpt: true,
