@@ -548,6 +548,11 @@ class PluginContext implements Omit<RollupPluginContext, 'cache'> {
   meta: RollupPluginContext['meta']
   environment: Environment
 
+  get pluginName() {
+    // TODO(sapphi-red): remove `!` later
+    return this._plugin.name!
+  }
+
   constructor(
     public _plugin: Plugin,
     public _container: EnvironmentPluginContainer,
