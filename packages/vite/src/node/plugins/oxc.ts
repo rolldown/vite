@@ -158,7 +158,12 @@ export async function transformWithOxc(
             `preserveValueImports=${preserveValueImports} + importsNotUsedAsValues=${importsNotUsedAsValues} is not supported by oxc.` +
               'Please migrate to the new verbatimModuleSyntax option.',
           )
+          resolvedOptions.typescript ??= {}
+          resolvedOptions.typescript.onlyRemoveTypeImports = false
         }
+      } else {
+        resolvedOptions.typescript ??= {}
+        resolvedOptions.typescript.onlyRemoveTypeImports = false
       }
 
       const resolvedTsconfigTarget = resolveTsconfigTarget(
