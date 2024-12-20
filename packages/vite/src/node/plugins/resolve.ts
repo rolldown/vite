@@ -335,7 +335,7 @@ function optimizerResolvePlugin(
     name: 'vite:resolve-dev',
     ...({
       apply: 'serve',
-    } satisfies Plugin),
+    } satisfies Partial<Plugin>),
     resolveId: {
       filter: {
         id: {

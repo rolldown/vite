@@ -7,9 +7,9 @@ import colors from 'picocolors'
 import { init, parse } from 'es-module-lexer'
 import { isDynamicPattern } from 'tinyglobby'
 import {
-  type RollupOptions,
-  type RollupOutput,
-  type OutputOptions as RollupOutputOptions,
+  type RolldownOptions,
+  type RolldownOutput,
+  type OutputOptions as RolldownOutputOptions,
   rolldown,
 } from 'rolldown'
 import type { DepsOptimizerEsbuildOptions } from 'types/internal/esbuildOptions'
@@ -97,9 +97,9 @@ export interface DepOptimizationConfig {
    * https://esbuild.github.io/api
    */
   esbuildOptions?: DepsOptimizerEsbuildOptions
-  rollupOptions?: Omit<RollupOptions, 'input' | 'logLevel' | 'output'> & {
+  rollupOptions?: Omit<RolldownOptions, 'input' | 'logLevel' | 'output'> & {
     output?: Omit<
-      RollupOutputOptions,
+      RolldownOutputOptions,
       'format' | 'sourcemap' | 'dir' | 'banner'
     >
   }
@@ -702,7 +702,7 @@ async function prepareRolldownOptimizerRun(
   processingCacheDir: string,
   optimizerContext: { cancelled: boolean },
 ): Promise<{
-  context?: { build: () => Promise<RollupOutput>; cancel: () => void }
+  context?: { build: () => Promise<RolldownOutput>; cancel: () => void }
   idToExports: Record<string, ExportsData>
 }> {
   // esbuild generates nested directory output with lowest common ancestor base
