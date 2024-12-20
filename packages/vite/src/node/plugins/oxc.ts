@@ -273,6 +273,7 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
         return {
           code: result.code,
           map: result.map,
+          moduleType: 'js',
         }
       }
     },
