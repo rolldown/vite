@@ -8,7 +8,7 @@ import type {
   Logger,
   PluginOption,
   ResolvedConfig,
-  RollupWatcher,
+  Rollup,
   UserConfig,
   ViteDevServer,
 } from 'vite'
@@ -24,6 +24,27 @@ import type { Browser, Page } from 'playwright-chromium'
 import type { RollupError, RollupWatcherEvent } from 'rollup'
 import type { RunnerTestFile } from 'vitest'
 import { beforeAll, inject } from 'vitest'
+
+type RollupWatcher = Rollup.RolldownWatcher
+type RollupWatcherEvent =
+  | {
+      code: 'START'
+    }
+  | {
+      code: 'BUNDLE_START'
+    }
+  | {
+      code: 'BUNDLE_END'
+      duration: number
+      output: readonly string[]
+    }
+  | {
+      code: 'END'
+    }
+  | {
+      code: 'ERROR'
+      error: Error
+    }
 
 // #region env
 
@@ -316,9 +337,6 @@ export async function notifyRebuildComplete(
   await new Promise<void>((resolve) => {
     resolveFn = resolve
   })
-  // During tests we edit the files too fast and sometimes chokidar
-  // misses change events, so wait 100ms for consistency
-  await new Promise<void>((resolve) => setTimeout(resolve, 100))
   return watcher // watcher.off('event', callback)
 }
 

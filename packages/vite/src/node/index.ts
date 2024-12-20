@@ -12,7 +12,7 @@ export { perEnvironmentPlugin } from './plugin'
 export { perEnvironmentState } from './environment'
 export { createServer } from './server'
 export { preview } from './preview'
-export { build, createBuilder, type RollupWatcher } from './build'
+export { build, createBuilder } from './build'
 
 export { optimizeDeps } from './optimizer'
 export { createIdResolver } from './idResolver'
