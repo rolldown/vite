@@ -230,8 +230,8 @@ importers:
         specifier: ^8.4.49
         version: 8.4.49
       rolldown:
-        specifier: 0.15.1-commit.cc6f557
-        version: 0.15.1-commit.cc6f557(@babel/runtime@7.26.0)
+        specifier: 0.15.1-commit.f85bcfa
+        version: 0.15.1-commit.f85bcfa(@babel/runtime@7.26.0)
       rollup:
         specifier: ^4.23.0
         version: 4.30.0
@@ -2846,63 +2846,63 @@ packages:
   '@polka/url@1.0.0-next.28':
     resolution: {integrity: sha512-8LduaNlMZGwdZ6qWrKlfa+2M4gahzFkprZiAt2TF8uS0qQgBizKXpXURqvTJ4WtmupWxaLqjRb2UCTe72mu+Aw==}
 
-  '@rolldown/binding-darwin-arm64@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-86Rfr/RVQxsjRdOzS5+9p3e9DjoprS2Gql56s+VJieLF/q7pOVZlAk5dHVrvra1J8Hl4g7+A092g3GL3URi//Q==}
+  '@rolldown/binding-darwin-arm64@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-HMC5aOfaqodUl+ab6LY7pUHH51cIOyKm2X7NnKWvtkBov1GCkyyXOBT20b/MZhrf0ZGqd3Oxtu0Lh7WKbZ3mRQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@rolldown/binding-darwin-x64@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-86S/cvtmk56TjAemW+/Iuc19kW4GgkSePnXHO1fQdOqYk4OHKpRj57uCurTJxIz6A5LulG6B5LJUcnimAgtxyg==}
+  '@rolldown/binding-darwin-x64@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-Vl9cmXBAaQADjlBuviW5YFq6Tcx6T4g3OIgJ/CBKFmuXyPyOMmtSSzZxCBKgJWQIj6wT3sUiAlej3vprKyW9GA==}
     cpu: [x64]
     os: [darwin]
 
-  '@rolldown/binding-freebsd-x64@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-pe/mJPJ+fOkVHWn4WceDnnH+hAllCZEJDRuCC9RAI2xvZdBensHXpqEusA+7SH1gam4+3Y3smFAQWtJ3Aw97QA==}
+  '@rolldown/binding-freebsd-x64@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-O+LxFyGf9ZyMk2KH2LzkZlNBGKSzwzpO6R5TaS+RhgtO+Tuu31k8TOPKGafSBoyuaMQXPqqOw2psVvPrG3QDjw==}
     cpu: [x64]
     os: [freebsd]
 
-  '@rolldown/binding-linux-arm-gnueabihf@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-7p+x7SEazQs2lbK+1Ityegh9RibmAe/FId+1sI/KQEU5ZGC9z0C6OYI9Xn0zRe66ayRsMz6dbYzdy50u9jGDnA==}
+  '@rolldown/binding-linux-arm-gnueabihf@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-O4skL+5KA2Q5OCZwjffgFoLo6zJnuFSKbbpc7Af+exN3O4Ufc8w0VnEwOXn05XHAYGKW40cETJhiU+4kwdADbA==}
     cpu: [arm]
     os: [linux]
 
-  '@rolldown/binding-linux-arm64-gnu@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-GxxgWlnvdn2gfdIPLFBA0YDgzF28ySmSvBTLdRlV79aRKQaE8KKyPpYB4B2JpvA8ovSuIU6jRH7t+/9VBcaP4g==}
+  '@rolldown/binding-linux-arm64-gnu@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-1LBkbslH/f7pRwY1zUdQHtKU8VEXJEZhqbqPNwT7t1rj8nI5HcqBCDTdtukM1q4qqqFKkKsX7DgiWRIwIn7dUQ==}
     cpu: [arm64]
     os: [linux]
 
-  '@rolldown/binding-linux-arm64-musl@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-UtgkfxMlG+TyG7+3iSCYlAMAHG6kyyq22Bd830ZjD8+QZFUgBPkE0hu115yvdQ2bSQPodS//i2jL4Bhm9hQU9w==}
+  '@rolldown/binding-linux-arm64-musl@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-VcVU/08wjsf00ybz9530c09mpitttJ46eecBnGaLX4FF/dl3pkBafsQ+j6AI3oUhUSiVcnjQqwWYrJa4fikcYg==}
     cpu: [arm64]
     os: [linux]
 
-  '@rolldown/binding-linux-x64-gnu@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-k/5md82hbjjSCDm1Kw64o5S7E+CUeN1PhV9brO9dDKEFpbmKSGvUpitC22lOo9pT3dyMsVQGwFYBtFDO1yreDw==}
+  '@rolldown/binding-linux-x64-gnu@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-3fetRJieZ0ZTuc9hquFgV0NkSK19T2REN0HQ87hZu9imbNPwnaEzQAUFFRNgIHCoLWe6dzB8oauxLwJ9po4hXA==}
     cpu: [x64]
     os: [linux]
 
-  '@rolldown/binding-linux-x64-musl@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-QeMU1W5TfvvLVkTDtI2YOkFBIeWQGgHig5rwkj1tz3bZiKZHc60T8UR2SUr1O9BirxHbYnmaCV3zlgZbhIgVtA==}
+  '@rolldown/binding-linux-x64-musl@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-tUMokCx7m+KgzerRgt1o/9MQGW31aY/U2h76XFbTFhjE5WM/vz1fXPpUxjllll/On3acLA2QvTieZQdPs1ctVw==}
     cpu: [x64]
     os: [linux]
 
-  '@rolldown/binding-wasm32-wasi@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-mJhUMJF8kMKB//pKOOh5MrSnDipYqFXbiW9mCrDdoteEEKybcNf+qm+LMAJeYoaSHeV1u2eVjZvqwouQTWh53g==}
+  '@rolldown/binding-wasm32-wasi@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-lu5JekSOuG0aUnr8dGvVbh67cXySXQxiJnTQ4XU22DI4n83BOmqoHkABjvO85oZkBQkNjmFt9pE3G5H1aAJ3ow==}
     engines: {node: '>=14.21.3'}
     cpu: [wasm32]
 
-  '@rolldown/binding-win32-arm64-msvc@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-E6C9crLQuPa8Kl6Eny2fSoVpikml1884Eul8TrPcKDdIFW5BcKdHrmI+12G8icGOYRl3GsQpXP+d186708L6fQ==}
+  '@rolldown/binding-win32-arm64-msvc@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-o2jreGLSc9BgUHdlTJTqABuHyrH3QGr74jR7jt06+AZ9jjYNzFZRpIQyK0+Bzff/B9zqr0IcrPitIP+m2E4T/Q==}
     cpu: [arm64]
     os: [win32]
 
-  '@rolldown/binding-win32-ia32-msvc@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-z2jKJzegkRs0odzSFBi1+GkBa2qRzbsZpz3+aDm67cXIFkEnVMB35PcqKRgE44s/3Ect0wHT3n0p8vTMBjzUXQ==}
+  '@rolldown/binding-win32-ia32-msvc@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-1vgDYYsItNE/VNpUrZFefIl2jLcs3bzNzbtjlvpyHh1rhqwV46YmY6qXr4WbHJN+DtkGSjRz/ZAEpnXtRrNevQ==}
     cpu: [ia32]
     os: [win32]
 
-  '@rolldown/binding-win32-x64-msvc@0.15.1-commit.cc6f557':
-    resolution: {integrity: sha512-yPuc30Tls+tyJmeWth8j+U0bm6iolgWGEt6t1yt+XVSwFabLihxdFbVUnS/7shEzLukQ5X9kDo/Evlh0KbecqA==}
+  '@rolldown/binding-win32-x64-msvc@0.15.1-commit.f85bcfa':
+    resolution: {integrity: sha512-k07lnlxEs6YfxB59fdRL/0eKbrOSpTy4igXfu78zSZdNaeT90Y5Ou6YGmwBa5zrFh5i2qEVqMq4A4JQnQe3Xqw==}
     cpu: [x64]
     os: [win32]
 
@@ -6391,8 +6391,8 @@ packages:
     deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
-  rolldown@0.15.1-commit.cc6f557:
-    resolution: {integrity: sha512-Y1scOgARKwkSCHbsIJMBGb27SaGkbKd1cg30A1oJD6O+c8BO7jO6G3hGH3wSmitLqVr3ZrfkXhuKEkbxQ1pAGA==}
+  rolldown@0.15.1-commit.f85bcfa:
+    resolution: {integrity: sha512-nz9a3VApaO8GDBP544c2MBexwwsN+MWoWFyGuYX9W0LzOiA6qKx71sXWcT0+2SArjHLOJjL7m8R9ov9gsWRZ+g==}
     hasBin: true
     peerDependencies:
       '@babel/runtime': '>=7'
@@ -8548,42 +8548,42 @@ snapshots:
 
   '@polka/url@1.0.0-next.28': {}
 
-  '@rolldown/binding-darwin-arm64@0.15.1-commit.cc6f557':
+  '@rolldown/binding-darwin-arm64@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-darwin-x64@0.15.1-commit.cc6f557':
+  '@rolldown/binding-darwin-x64@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-freebsd-x64@0.15.1-commit.cc6f557':
+  '@rolldown/binding-freebsd-x64@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-linux-arm-gnueabihf@0.15.1-commit.cc6f557':
+  '@rolldown/binding-linux-arm-gnueabihf@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-linux-arm64-gnu@0.15.1-commit.cc6f557':
+  '@rolldown/binding-linux-arm64-gnu@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-linux-arm64-musl@0.15.1-commit.cc6f557':
+  '@rolldown/binding-linux-arm64-musl@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-linux-x64-gnu@0.15.1-commit.cc6f557':
+  '@rolldown/binding-linux-x64-gnu@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-linux-x64-musl@0.15.1-commit.cc6f557':
+  '@rolldown/binding-linux-x64-musl@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-wasm32-wasi@0.15.1-commit.cc6f557':
+  '@rolldown/binding-wasm32-wasi@0.15.1-commit.f85bcfa':
     dependencies:
       '@napi-rs/wasm-runtime': 0.2.5
     optional: true
 
-  '@rolldown/binding-win32-arm64-msvc@0.15.1-commit.cc6f557':
+  '@rolldown/binding-win32-arm64-msvc@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-win32-ia32-msvc@0.15.1-commit.cc6f557':
+  '@rolldown/binding-win32-ia32-msvc@0.15.1-commit.f85bcfa':
     optional: true
 
-  '@rolldown/binding-win32-x64-msvc@0.15.1-commit.cc6f557':
+  '@rolldown/binding-win32-x64-msvc@0.15.1-commit.f85bcfa':
     optional: true
 
   '@rollup/plugin-alias@5.1.1(rollup@4.30.0)':
@@ -12320,23 +12320,23 @@ snapshots:
     dependencies:
       glob: 7.2.3
 
-  rolldown@0.15.1-commit.cc6f557(@babel/runtime@7.26.0):
+  rolldown@0.15.1-commit.f85bcfa(@babel/runtime@7.26.0):
     dependencies:
       zod: 3.23.8
     optionalDependencies:
       '@babel/runtime': 7.26.0
-      '@rolldown/binding-darwin-arm64': 0.15.1-commit.cc6f557
-      '@rolldown/binding-darwin-x64': 0.15.1-commit.cc6f557
-      '@rolldown/binding-freebsd-x64': 0.15.1-commit.cc6f557
-      '@rolldown/binding-linux-arm-gnueabihf': 0.15.1-commit.cc6f557
-      '@rolldown/binding-linux-arm64-gnu': 0.15.1-commit.cc6f557
-      '@rolldown/binding-linux-arm64-musl': 0.15.1-commit.cc6f557
-      '@rolldown/binding-linux-x64-gnu': 0.15.1-commit.cc6f557
-      '@rolldown/binding-linux-x64-musl': 0.15.1-commit.cc6f557
-      '@rolldown/binding-wasm32-wasi': 0.15.1-commit.cc6f557
-      '@rolldown/binding-win32-arm64-msvc': 0.15.1-commit.cc6f557
-      '@rolldown/binding-win32-ia32-msvc': 0.15.1-commit.cc6f557
-      '@rolldown/binding-win32-x64-msvc': 0.15.1-commit.cc6f557
+      '@rolldown/binding-darwin-arm64': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-darwin-x64': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-freebsd-x64': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-linux-arm-gnueabihf': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-linux-arm64-gnu': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-linux-arm64-musl': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-linux-x64-gnu': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-linux-x64-musl': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-wasm32-wasi': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-win32-arm64-msvc': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-win32-ia32-msvc': 0.15.1-commit.f85bcfa
+      '@rolldown/binding-win32-x64-msvc': 0.15.1-commit.f85bcfa
 
   rollup-plugin-dts@6.1.1(rollup@4.30.0)(typescript@5.7.2):
     dependencies:
