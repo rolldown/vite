@@ -550,8 +550,7 @@ test.runIf(isBuild)('manifest', async () => {
   }
 })
 
-// TODO: rolldown does not support rebuild
-describe.runIf(isBuild).skip('css and assets in css in build watch', () => {
+describe.runIf(isBuild)('css and assets in css in build watch', () => {
   test('css will not be lost and css does not contain undefined', async () => {
     editFile('index.html', (code) => code.replace('Assets', 'assets'))
     await notifyRebuildComplete(watcher)
