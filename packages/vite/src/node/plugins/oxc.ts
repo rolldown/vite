@@ -160,6 +160,55 @@ export async function transformWithOxc(
           )
         }
       }
+
+      const resolvedTsconfigTarget = resolveTsconfigTarget(
+        loadedCompilerOptions.target,
+      )
+      const useDefineForClassFields =
+        loadedCompilerOptions.useDefineForClassFields ??
+        (resolvedTsconfigTarget === 'next' || resolvedTsconfigTarget >= 2022)
+      resolvedOptions.assumptions ??= {}
+      resolvedOptions.assumptions.setPublicClassFields =
+        !useDefineForClassFields
+
+      // set target to es2022 or lower to enable class property transforms
+      // https://github.com/oxc-project/oxc/issues/6735#issuecomment-2513866362
+      if (!useDefineForClassFields) {
+        let set = false
+        if (!resolvedOptions.target) {
+          resolvedOptions.target = 'es2022'
+          set = true
+        } else {
+          const target = Array.isArray(resolvedOptions.target)
+            ? [...resolvedOptions.target]
+            : resolvedOptions.target.split(',')
+          const esTargetIndex = target.findIndex((t) =>
+            t.toLowerCase().startsWith('es'),
+          )
+          if (esTargetIndex > 0) {
+            const esTargetTrimmed = target[esTargetIndex].toLowerCase().slice(2)
+            if (
+              esTargetTrimmed === 'next' ||
+              parseInt(esTargetTrimmed, 10) > 2022
+            ) {
+              target[esTargetIndex] = 'es2022'
+              set = true
+            }
+          } else {
+            target.push('es2022')
+            set = true
+          }
+          resolvedOptions.target = target
+        }
+
+        if (set) {
+          ctx?.warn(
+            'target was modified to include ES2022' +
+              ' because useDefineForClassFields is set to false' +
+              ' and oxc does not support transforming useDefineForClassFields=false for ES2022+ yet',
+          )
+        }
+      }
     } catch (e) {
       if (e instanceof TSConfckParseError) {
         // tsconfig could be out of root, make sure it is watched on dev
@@ -208,6 +257,16 @@ export async function transformWithOxc(
     ...result,
     map,
   }
+}
+
+function resolveTsconfigTarget(target: string | undefined): number | 'next' {
+  if (!target) return 5
+
+  const targetLowered = target.toLowerCase()
+  if (!targetLowered.startsWith('es')) return 5
+
+  if (targetLowered === 'esnext') return 'next'
+  return parseInt(targetLowered.slice(2))
 }
 
 export function oxcPlugin(config: ResolvedConfig): Plugin {
