@@ -12,12 +12,12 @@ import type {
   OutputOptions,
   RenderedChunk,
   RolldownPlugin,
+  RolldownWatcher,
   RollupBuild,
   RollupError,
   RollupLog,
   RollupOptions,
   RollupOutput,
-  watch as rolldownWatch,
   // WatcherOptions,
 } from 'rolldown'
 import {
@@ -68,6 +68,8 @@ import { buildLoadFallbackPlugin } from './plugins/loadFallback'
 import { findNearestPackageData } from './packages'
 import type { PackageCache } from './packages'
 import {
+  type RolldownWatcherOptions as WatcherOptions,
+  convertToNotifyOptions,
   getResolvedOutDirs,
   resolveChokidarOptions,
   resolveEmptyOutDir,
@@ -83,8 +85,7 @@ import {
 import type { MinimalPluginContext, Plugin, PluginContext } from './plugin'
 import type { RollupPluginHooks } from './typeUtils'
 
-export type RollupWatcher = Awaited<ReturnType<typeof rolldownWatch>>
-type WatcherOptions = { _: never }
+type RollupWatcher = RolldownWatcher
 
 export interface BuildEnvironmentOptions {
   /**
@@ -823,7 +824,7 @@ async function buildEnvironment(
       logger.info(colors.cyan(`\nwatching for file changes...`))
 
       const resolvedChokidarOptions = resolveChokidarOptions(
-        {}, // options.watch.chokidar,
+        options.watch.chokidar,
         resolvedOutDirs,
         emptyOutDir,
         environment.config.cacheDir,
@@ -835,7 +836,9 @@ async function buildEnvironment(
         output: normalizedOutputs[0], // normalizedOutputs,
         watch: {
           ...options.watch,
-          chokidar: resolvedChokidarOptions,
+          // TODO: convert chokidar options more precisely
+          // TODO: support more chokidar options
+          notify: convertToNotifyOptions(resolvedChokidarOptions),
         },
       })
 
