@@ -120,8 +120,8 @@ describe('build', () => {
       {
         "changed": [
           "index",
-          "_foo",
           "_bar",
+          "_foo",
           "_baz.css",
         ],
         "unchanged": [
@@ -851,7 +851,7 @@ test.for([true, false])(
       ([client, ssr, custom1, custom2] as RollupOutput[]).map(
         (o) => o.output[0].code.split('\n').length,
       ),
-    ).toEqual([2, 5, 2, 5])
+    ).toEqual([1, 5, 1, 5])
   },
 )
 
