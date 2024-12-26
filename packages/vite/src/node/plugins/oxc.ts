@@ -6,10 +6,10 @@ import type {
 } from 'rolldown/experimental'
 import { transform } from 'rolldown/experimental'
 import type { RawSourceMap } from '@ampproject/remapping'
-import { type InternalModuleFormat, type SourceMap, rolldown } from 'rolldown'
+import type { InternalModuleFormat, RollupError, SourceMap } from 'rolldown'
+import { rolldown } from 'rolldown'
 import type { FSWatcher } from 'dep-types/chokidar'
 import { TSConfckParseError } from 'tsconfck'
-import type { RollupError } from 'rollup'
 import {
   combineSourcemaps,
   createFilter,

@@ -71,6 +71,7 @@ export async function resolvePlugins(
           }),
         })
       : aliasPlugin({
+          // @ts-expect-error aliasPlugin receives rollup types
           entries: config.resolve.alias,
           customResolver: viteAliasCustomResolver,
         }),

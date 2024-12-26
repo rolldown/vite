@@ -1,10 +1,9 @@
-import type {
-  GetManualChunk,
-  GetModuleInfo,
-  // ManualChunkMeta,
-  // OutputOptions,
-} from 'rollup'
-import { /* arraify, */ isInNodeModules } from '../utils'
+import type {} from // GetManualChunk,
+// GetModuleInfo,
+// ManualChunkMeta,
+// OutputOptions,
+'rolldown'
+// import { arraify, isInNodeModules } from '../utils'
 // import type { UserConfig } from '../../node'
 import type { Plugin } from '../plugin'
 
@@ -43,55 +42,56 @@ export class SplitVendorChunkCache {
  * @deprecated use build.rollupOptions.output.manualChunks or framework specific configuration
  */
 export function splitVendorChunk(
-  options: { cache?: SplitVendorChunkCache } = {},
-): GetManualChunk {
-  const cache = options.cache ?? new SplitVendorChunkCache()
-  return (id, { getModuleInfo }) => {
-    if (
-      isInNodeModules(id) &&
-      !isCSSRequest(id) &&
-      staticImportedByEntry(id, getModuleInfo, cache.cache)
-    ) {
-      return 'vendor'
-    }
-  }
+  _options: { cache?: SplitVendorChunkCache } = {},
+): () => null /* : GetManualChunk */ {
+  // const cache = options.cache ?? new SplitVendorChunkCache()
+  // return (id, { getModuleInfo }) => {
+  //   if (
+  //     isInNodeModules(id) &&
+  //     !isCSSRequest(id) &&
+  //     staticImportedByEntry(id, getModuleInfo, cache.cache)
+  //   ) {
+  //     return 'vendor'
+  //   }
+  // }
+  return () => null
 }
 
-function staticImportedByEntry(
-  id: string,
-  getModuleInfo: GetModuleInfo,
-  cache: Map<string, boolean>,
-  importStack: string[] = [],
-): boolean {
-  if (cache.has(id)) {
-    return cache.get(id) as boolean
-  }
-  if (importStack.includes(id)) {
-    // circular deps!
-    cache.set(id, false)
-    return false
-  }
-  const mod = getModuleInfo(id)
-  if (!mod) {
-    cache.set(id, false)
-    return false
-  }
+// function staticImportedByEntry(
+//   id: string,
+//   getModuleInfo: GetModuleInfo,
+//   cache: Map<string, boolean>,
+//   importStack: string[] = [],
+// ): boolean {
+//   if (cache.has(id)) {
+//     return cache.get(id) as boolean
+//   }
+//   if (importStack.includes(id)) {
+//     // circular deps!
+//     cache.set(id, false)
+//     return false
+//   }
+//   const mod = getModuleInfo(id)
+//   if (!mod) {
+//     cache.set(id, false)
+//     return false
+//   }
 
-  if (mod.isEntry) {
-    cache.set(id, true)
-    return true
-  }
-  const someImporterIs = mod.importers.some((importer) =>
-    staticImportedByEntry(
-      importer,
-      getModuleInfo,
-      cache,
-      importStack.concat(id),
-    ),
-  )
-  cache.set(id, someImporterIs)
-  return someImporterIs
-}
+//   if (mod.isEntry) {
+//     cache.set(id, true)
+//     return true
+//   }
+//   const someImporterIs = mod.importers.some((importer) =>
+//     staticImportedByEntry(
+//       importer,
+//       getModuleInfo,
+//       cache,
+//       importStack.concat(id),
+//     ),
+//   )
+//   cache.set(id, someImporterIs)
+//   return someImporterIs
+// }
 
 /**
  * @deprecated use build.rollupOptions.output.manualChunks or framework specific configuration
