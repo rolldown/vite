@@ -113,6 +113,8 @@ beforeAll(async (s) => {
     // suppress @vue/reactivity-transform warning
     if (msg.includes('@vue/reactivity-transform')) return
     if (msg.includes('Generated an empty chunk')) return
+    // suppress rolldown minifier warning
+    if (msg.includes('The built-in minifier is still under development')) return
     warn.call(globalConsole, msg, ...args)
   }
 
