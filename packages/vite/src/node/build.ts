@@ -629,6 +629,11 @@ async function buildEnvironment(
     onwarn(warning, warn) {
       onRollupWarning(warning, warn, environment)
     },
+    define: {
+      ...options.rollupOptions.define,
+      // disable builtin process.env.NODE_ENV replacement as it is handled by the define plugin
+      'process.env.NODE_ENV': 'process.env.NODE_ENV',
+    },
     // TODO: remove this and enable rolldown's CSS support later
     moduleTypes: {
       ...options.rollupOptions.moduleTypes,
