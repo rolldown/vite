@@ -1,7 +1,6 @@
-import { transform } from 'esbuild'
-import { TraceMap, decodedMap, encodedMap } from '@jridgewell/trace-mapping'
+import type { RolldownPlugin } from 'rolldown'
+import { transform } from 'rolldown/experimental'
 import type { ResolvedConfig } from '../config'
-import type { Plugin } from '../plugin'
 import { escapeRegex } from '../utils'
 import type { Environment } from '../environment'
 import { isCSSRequest } from './css'
@@ -12,7 +11,7 @@ const isNonJsRequest = (request: string): boolean => nonJsRe.test(request)
 const importMetaEnvMarker = '__vite_import_meta_env__'
 const importMetaEnvKeyReCache = new Map<string, RegExp>()
 
-export function definePlugin(config: ResolvedConfig): Plugin {
+export function definePlugin(config: ResolvedConfig): RolldownPlugin {
   const isBuild = config.command === 'build'
   const isBuildLib = isBuild && config.build.lib
 
@@ -111,7 +110,7 @@ export function definePlugin(config: ResolvedConfig): Plugin {
     return pattern
   }
 
-  return {
+  const plugin: RolldownPlugin = {
     name: 'vite:define',
 
     async transform(code, id) {
@@ -169,9 +168,7 @@ export function definePlugin(config: ResolvedConfig): Plugin {
           result.code = `const ${marker} = ${importMetaEnvVal};\n` + result.code
 
           if (result.map) {
-            const map = JSON.parse(result.map)
-            map.mappings = ';' + map.mappings
-            result.map = map
+            result.map.mappings = ';' + result.map.mappings
           }
         }
       }
@@ -179,6 +176,16 @@ export function definePlugin(config: ResolvedConfig): Plugin {
       return result
     },
   }
+  const enableNativePlugin = config.experimental.enableNativePlugin
+  if (enableNativePlugin) {
+    delete plugin.transform
+    plugin.options = function (option) {
+      const [define, _pattern, importMetaEnvVal] = getPattern(this.environment)
+      define['import.meta.env'] = importMetaEnvVal
+      option.define = define
+    }
+  }
+  return plugin
 }
 
 export async function replaceDefine(
@@ -186,39 +193,18 @@ export async function replaceDefine(
   code: string,
   id: string,
   define: Record<string, string>,
-): Promise<{ code: string; map: string | null }> {
-  const esbuildOptions = environment.config.esbuild || {}
-
-  const result = await transform(code, {
-    loader: 'js',
-    charset: esbuildOptions.charset ?? 'utf8',
-    platform: 'neutral',
+): Promise<{ code: string; map: ReturnType<typeof transform>['map'] | null }> {
+  const result = transform(id, code, {
+    lang: 'js',
+    sourceType: 'module',
     define,
-    sourcefile: id,
     sourcemap:
       environment.config.command === 'build'
         ? !!environment.config.build.sourcemap
         : true,
   })
-
-  // remove esbuild's <define:...> source entries
-  // since they would confuse source map remapping/collapsing which expects a single source
-  if (result.map.includes('<define:')) {
-    const originalMap = new TraceMap(result.map)
-    if (originalMap.sources.length >= 2) {
-      const sourceIndex = originalMap.sources.indexOf(id)
-      const decoded = decodedMap(originalMap)
-      decoded.sources = [id]
-      decoded.mappings = decoded.mappings.map((segments) =>
-        segments.filter((segment) => {
-          // modify and filter
-          const index = segment[1]
-          segment[1] = 0
-          return index === sourceIndex
-        }),
-      )
-      result.map = JSON.stringify(encodedMap(new TraceMap(decoded as any)))
-    }
+  if (result.errors.length > 0) {
+    throw new AggregateError(result.errors, 'oxc transform error')
   }
 
   return {

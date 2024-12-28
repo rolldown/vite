@@ -13,7 +13,7 @@ import { parseAst } from 'rollup/parseAst'
 import type { StaticImport } from 'mlly'
 import { ESM_STATIC_IMPORT_RE, parseStaticImport } from 'mlly'
 import { makeLegalIdentifier } from '@rollup/pluginutils'
-import type { PartialResolvedId, RollupError } from 'rollup'
+import type { PartialResolvedId, RollupError } from 'rolldown'
 import type { Identifier, Literal } from 'estree'
 import {
   CLIENT_DIR,
@@ -58,7 +58,10 @@ import type { ResolvedConfig } from '../config'
 import type { Plugin } from '../plugin'
 import type { DevEnvironment } from '../server/environment'
 import { shouldExternalize } from '../external'
-import { optimizedDepNeedsInterop } from '../optimizer'
+import {
+  optimizedDepInfoFromFile,
+  optimizedDepNeedsInterop,
+} from '../optimizer'
 import {
   cleanUrl,
   unwrapId,
@@ -82,7 +85,6 @@ export const canSkipImportAnalysis = (id: string): boolean =>
   skipRE.test(id) || isDirectCSSRequest(id)
 
 const optimizedDepChunkRE = /\/chunk-[A-Z\d]{8}\.js/
-const optimizedDepDynamicRE = /-[A-Z\d]{8}\.js/
 
 export const hasViteIgnoreRE = /\/\*\s*@vite-ignore\s*\*\//
 
@@ -352,6 +354,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
         })
 
         // NOTE: resolved.meta is undefined in dev
+        // TODO: resolved.meta is not supported
         if (!resolved || resolved.meta?.['vite:alias']?.noResolved) {
           // in ssr, we should let node handle the missing modules
           if (ssr) {
@@ -567,6 +570,10 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
                 // page reload. We could return a 404 in that case but it is safe to return the request
                 const file = cleanUrl(resolvedId) // Remove ?v={hash}
 
+                const depInfo = optimizedDepInfoFromFile(
+                  depsOptimizer.metadata,
+                  file,
+                )
                 const needsInterop = await optimizedDepNeedsInterop(
                   environment,
                   depsOptimizer.metadata,
@@ -577,7 +584,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
                   // Non-entry dynamic imports from dependencies will reach here as there isn't
                   // optimize info for them, but they don't need es interop. If the request isn't
                   // a dynamic import, then it is an internal Vite error
-                  if (!optimizedDepDynamicRE.test(file)) {
+                  if (depInfo?.isDynamicEntry) {
                     config.logger.error(
                       colors.red(
                         `Vite Error, ${url} optimized info should be defined`,

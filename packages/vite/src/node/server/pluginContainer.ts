@@ -56,7 +56,7 @@ import type {
   SourceDescription,
   SourceMap,
   TransformResult,
-} from 'rollup'
+} from 'rolldown'
 import type { RawSourceMap } from '@ampproject/remapping'
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import MagicString from 'magic-string'
@@ -73,6 +73,7 @@ import {
   normalizePath,
   numberToPos,
   prettifyUrl,
+  rolldownVersion,
   rollupVersion,
   timeFrom,
 } from '../utils'
@@ -184,6 +185,7 @@ class EnvironmentPluginContainer {
     this.minimalContext = {
       meta: {
         rollupVersion,
+        rolldownVersion,
         watchMode: true,
       },
       debug: noop,
@@ -350,6 +352,7 @@ class EnvironmentPluginContainer {
        */
       scan?: boolean
       isEntry?: boolean
+      kind?: 'import' | 'dynamic-import' | 'require-call'
     },
   ): Promise<PartialResolvedId | null> {
     if (!this._started) {
@@ -360,6 +363,7 @@ class EnvironmentPluginContainer {
     const skipCalls = options?.skipCalls
     const scan = !!options?.scan
     const ssr = this.environment.config.consumer === 'server'
+    const kind = options?.kind
     const ctx = new ResolveIdContext(this, skip, skipCalls, scan)
 
     const mergedSkip = new Set<Plugin>(skip)
@@ -388,6 +392,7 @@ class EnvironmentPluginContainer {
           isEntry: !!options?.isEntry,
           ssr,
           scan,
+          kind,
         }),
       )
       if (!result) continue
@@ -462,7 +467,9 @@ class EnvironmentPluginContainer {
     },
   ): Promise<{ code: string; map: SourceMap | { mappings: '' } | null }> {
     const ssr = this.environment.config.consumer === 'server'
-    const optionsWithSSR = options ? { ...options, ssr } : { ssr }
+    const optionsWithSSR = options
+      ? { ...options, ssr, moduleType: 'js' }
+      : { ssr, moduleType: 'js' }
     const inMap = options?.inMap
 
     const ctx = new TransformPluginContext(this, id, code, inMap as SourceMap)
@@ -553,6 +560,11 @@ class PluginContext implements Omit<RollupPluginContext, 'cache'> {
   _resolveSkipCalls?: readonly SkipInformation[]
   meta: RollupPluginContext['meta']
   environment: Environment
+
+  get pluginName() {
+    // TODO(sapphi-red): remove `!` later
+    return this._plugin.name!
+  }
 
   constructor(
     public _plugin: Plugin,
@@ -940,7 +952,7 @@ class TransformPluginContext
         includeContent: true,
         hires: 'boundary',
         source: cleanUrl(this.filename),
-      })
+      }) as SourceMap
     }
     return map
   }

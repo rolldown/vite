@@ -1,6 +1,7 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
-import type { RollupAstNode, SourceMap } from 'rollup'
+import type { RollupAstNode } from 'rollup'
+import type { SourceMap } from 'rolldown'
 import type {
   ExportAllDeclaration,
   ExportDefaultDeclaration,
@@ -419,7 +420,7 @@ async function ssrTransformScript(
     },
   })
 
-  let map = s.generateMap({ hires: 'boundary' })
+  let map = s.generateMap({ hires: 'boundary' }) as SourceMap
   map.sources = [path.basename(url)]
   // needs to use originalCode instead of code
   // because code might be already transformed even if map is null
