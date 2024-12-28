@@ -159,7 +159,6 @@
     "esbuild": "^0.24.0",
     "jiti": ">=1.21.0",
     "less": "*",
-    "lightningcss": "^1.21.0",
     "sass": "*",
     "sass-embedded": "*",
     "stylus": "*",
@@ -191,9 +190,6 @@
       "optional": true
     },
     "sugarss": {
-      "optional": true
-    },
-    "lightningcss": {
       "optional": true
     },
     "terser": {
