@@ -17,6 +17,7 @@ import type {
   OutputBundle,
   OutputChunk,
   OutputOptions,
+  PluginContext,
   PreRenderedChunk,
   RenderedChunk,
 } from 'rollup'
@@ -174,6 +175,7 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
   const legacyPolyfills = new Set<string>()
   // When discovering polyfills in `renderChunk`, the hook may be non-deterministic, so we group the
   // modern and legacy polyfills in a sorted chunks map for each rendered outputs before merging them.
+  // TODO: options object is not identical, so Map won't work
   const outputToChunkFileNameToPolyfills = new WeakMap<
     NormalizedOutputOptions,
     Map<string, { modern: Set<string>; legacy: Set<string> }> | null
@@ -282,13 +284,14 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
         return
       }
 
-      const chunkFileNameToPolyfills =
-        outputToChunkFileNameToPolyfills.get(opts)
-      if (chunkFileNameToPolyfills == null) {
-        throw new Error(
-          'Internal @vitejs/plugin-legacy error: discovered polyfills should exist',
-        )
-      }
+      // const chunkFileNameToPolyfills =
+      //   outputToChunkFileNameToPolyfills.get(opts)
+      // if (chunkFileNameToPolyfills == null) {
+      //   throw new Error(
+      //     'Internal @vitejs/plugin-legacy error: discovered polyfills should exist',
+      //   )
+      // }
+      const chunkFileNameToPolyfills = new Map()
 
       if (!isLegacyBundle(bundle, opts)) {
         // Merge discovered modern polyfills to `modernPolyfills`
@@ -305,6 +308,7 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
           )
         }
         await buildPolyfillChunk(
+          this,
           config.mode,
           modernPolyfills,
           bundle,
@@ -347,6 +351,7 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
         }
 
         await buildPolyfillChunk(
+          this,
           config.mode,
           legacyPolyfills,
           bundle,
@@ -434,7 +439,9 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
       ): OutputOptions => {
         return {
           ...options,
-          format: 'system',
+          // TODO
+          format: 'esm',
+          // format: 'system',
           entryFileNames: getLegacyOutputFileName(options.entryFileNames),
           chunkFileNames: getLegacyOutputFileName(options.chunkFileNames),
         }
@@ -455,7 +462,8 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
       }
     },
 
-    async renderChunk(raw, chunk, opts, { chunks }) {
+    // TODO: meta.chunks not supported
+    async renderChunk(raw, chunk, opts, { chunks } = { chunks: {} }) {
       if (config.build.ssr) {
         return null
       }
@@ -472,11 +480,15 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
         }
         outputToChunkFileNameToPolyfills.set(opts, chunkFileNameToPolyfills)
       }
-      const polyfillsDiscovered = chunkFileNameToPolyfills.get(chunk.fileName)
-      if (polyfillsDiscovered == null) {
-        throw new Error(
-          `Internal @vitejs/plugin-legacy error: discovered polyfills for ${chunk.fileName} should exist`,
-        )
+      // const polyfillsDiscovered = chunkFileNameToPolyfills.get(chunk.fileName)
+      // if (polyfillsDiscovered == null) {
+      //   throw new Error(
+      //     `Internal @vitejs/plugin-legacy error: discovered polyfills for ${chunk.fileName} should exist`,
+      //   )
+      // }
+      const polyfillsDiscovered = {
+        modern: new Set<string>(),
+        legacy: new Set<string>(),
       }
 
       if (!isLegacyChunk(chunk, opts)) {
@@ -545,6 +557,23 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
       // transform the legacy chunk with @babel/preset-env
       const sourceMaps = !!config.build.sourcemap
       const babel = await loadBabel()
+
+      // need to transform into systemjs separately from other plugins
+      // for preset-env polyfill detection and removal
+      // TODO: use transformFromAst to avoid multiple parse
+      const resultSystem = babel.transform(raw, {
+        babelrc: false,
+        configFile: false,
+        // TODO: source map
+        plugins: [
+          // @ts-ignore
+          (await import('@babel/plugin-transform-dynamic-import')).default,
+          // @ts-ignore
+          (await import('@babel/plugin-transform-modules-systemjs')).default,
+        ],
+      })
+      raw = resultSystem?.code!
+
       const result = babel.transform(raw, {
         babelrc: false,
         configFile: false,
@@ -718,7 +747,8 @@ function viteLegacyPlugin(options: Options = {}): Plugin[] {
         // avoid emitting duplicate assets
         for (const name in bundle) {
           if (bundle[name].type === 'asset' && !/.+\.map$/.test(name)) {
-            delete bundle[name]
+            // TODO: don't delete polyfil chunk emitted as asset
+            // delete bundle[name]
           }
         }
       }
@@ -781,6 +811,7 @@ function createBabelPresetEnvOptions(
 }
 
 async function buildPolyfillChunk(
+  ctx: PluginContext,
   mode: string,
   imports: Set<string>,
   bundle: OutputBundle,
@@ -846,8 +877,15 @@ async function buildPolyfillChunk(
     }
   }
 
+  // TODO: adding a whole new chunk to `bundle` is not supported by rolldown.
+  // can we use `emitFile(asset)` instead?
+  ctx.emitFile({
+    type: 'asset',
+    fileName: polyfillChunk.fileName,
+    source: polyfillChunk.code,
+  })
   // add the chunk to the bundle
-  bundle[polyfillChunk.fileName] = polyfillChunk
+  // bundle[polyfillChunk.fileName] = polyfillChunk
   if (polyfillChunk.sourcemapFileName) {
     const polyfillChunkMapAsset = _polyfillChunk.output.find(
       (chunk) =>
@@ -855,7 +893,7 @@ async function buildPolyfillChunk(
         chunk.fileName === polyfillChunk.sourcemapFileName,
     ) as OutputAsset | undefined
     if (polyfillChunkMapAsset) {
-      bundle[polyfillChunk.sourcemapFileName] = polyfillChunkMapAsset
+      // bundle[polyfillChunk.sourcemapFileName] = polyfillChunkMapAsset
     }
   }
 }
@@ -907,14 +945,15 @@ function prependModenChunkLegacyGuardPlugin(): Plugin {
 }
 
 function isLegacyChunk(chunk: RenderedChunk, options: NormalizedOutputOptions) {
-  return options.format === 'system' && chunk.fileName.includes('-legacy')
+  return chunk.fileName.includes('-legacy')
+  // return options.format === 'system' && chunk.fileName.includes('-legacy')
 }
 
 function isLegacyBundle(
   bundle: OutputBundle,
   options: NormalizedOutputOptions,
 ) {
-  if (options.format === 'system') {
+  if (true || options.format === 'system') {
     const entryChunk = Object.values(bundle).find(
       (output) => output.type === 'chunk' && output.isEntry,
     )
