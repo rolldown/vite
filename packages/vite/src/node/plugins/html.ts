@@ -472,8 +472,13 @@ export function buildHtmlPlugin(config: ResolvedConfig): RolldownPlugin {
 
             // script tags
             if (node.nodeName === 'script') {
-              const { src, srcSourceCodeLocation, isModule, isAsync, isIgnored } =
-                getScriptInfo(node)
+              const {
+                src,
+                srcSourceCodeLocation,
+                isModule,
+                isAsync,
+                isIgnored,
+              } = getScriptInfo(node)
 
               if (isIgnored) {
                 removeViteIgnoreAttr(s, node.sourceCodeLocation!)
