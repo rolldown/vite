@@ -33,7 +33,11 @@ const UMD_BEGIN_RE = /\(this,\s*function\([^()]*\)\s*\{\s*"use strict";/
 const jsxExtensionsRE = /\.(?:j|t)sx\b/
 const validExtensionRE = /\.\w+$/
 
-export interface OxcOptions extends OxcTransformOptions {
+export interface OxcOptions
+  extends Exclude<
+    OxcTransformOptions,
+    'cwd' | 'sourceType' | 'lang' | 'sourcemap' | 'helpers'
+  > {
   include?: string | RegExp | ReadonlyArray<string | RegExp>
   exclude?: string | RegExp | ReadonlyArray<string | RegExp>
   jsxInject?: string
@@ -321,6 +325,9 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
         ) {
           oxcTransformOptions.lang = 'jsx'
         }
+        oxcTransformOptions.sourcemap =
+          this.environment.mode !== 'build' ||
+          !!this.environment.config.build.sourcemap
 
         const result = await transformWithOxc(
           this,
