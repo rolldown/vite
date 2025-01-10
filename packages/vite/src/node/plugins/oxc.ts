@@ -190,7 +190,7 @@ export async function transformWithOxc(
           const esTargetIndex = target.findIndex((t) =>
             t.toLowerCase().startsWith('es'),
           )
-          if (esTargetIndex > 0) {
+          if (esTargetIndex >= 0) {
             const esTargetTrimmed = target[esTargetIndex].toLowerCase().slice(2)
             if (
               esTargetTrimmed === 'next' ||
