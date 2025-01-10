@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
+import type { Plugin } from 'rolldown'
 import { resolveConfig } from '../../config'
 import type { InlineConfig } from '../../config'
 import {
@@ -210,15 +211,15 @@ async function createCssPluginTransform(inlineConfig: InlineConfig = {}) {
   const config = await resolveConfig(inlineConfig, 'serve')
   const environment = new PartialEnvironment('client', config)
 
-  const { transform, buildStart } = cssPlugin(config)
+  const { transform, buildStart } = cssPlugin(config) as Plugin
 
   // @ts-expect-error buildStart is function
   await buildStart.call({})
 
   return {
     async transform(code: string, id: string) {
-      // @ts-expect-error transform is function
-      return await transform.call(
+      // @ts-expect-error transform.handler is function
+      return await transform.handler.call(
         {
           addWatchFile() {
             return

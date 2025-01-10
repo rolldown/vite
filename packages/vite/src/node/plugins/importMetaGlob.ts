@@ -10,7 +10,8 @@ import type {
   SpreadElement,
   TemplateLiteral,
 } from 'estree'
-import type { CustomPluginOptions, RollupAstNode, RollupError } from 'rollup'
+import type { RollupAstNode } from 'rollup'
+import type { CustomPluginOptions, RollupError } from 'rolldown'
 import MagicString from 'magic-string'
 import { stringifyQuery } from 'ufo'
 import type { GeneralImportGlobOptions } from 'types/importGlob'
