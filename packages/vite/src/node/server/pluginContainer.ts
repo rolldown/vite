@@ -552,7 +552,9 @@ class EnvironmentPluginContainer {
   }
 }
 
-class PluginContext implements Omit<RollupPluginContext, 'cache'> {
+class PluginContext
+  implements Omit<RollupPluginContext, 'cache' | 'emitChunk'>
+{
   ssr = false
   _scan = false
   _activeId: string | null = null
@@ -870,7 +872,7 @@ class LoadPluginContext extends PluginContext {
 
 class TransformPluginContext
   extends LoadPluginContext
-  implements Omit<RollupTransformPluginContext, 'cache'>
+  implements Omit<RollupTransformPluginContext, 'cache' | 'emitChunk'>
 {
   filename: string
   originalCode: string
