@@ -113,7 +113,7 @@ describe.runIf(isBuild)('build', () => {
     expect(content).toMatch(`(self.URL||self.webkitURL).createObjectURL`)
     expect(content).toMatch(`self.Blob`)
     expect(content).toMatch(
-      /try\{\w+=\w+&&\(self\.URL\|\|self\.webkitURL\)\.createObjectURL\(\w+\)[;\w()!]+throw\s*""/,
+      /try\{if\(\w+=\w+&&\(self\.URL\|\|self\.webkitURL\)\.createObjectURL\(\w+\),!\w+\)throw""/,
     )
     // inlined shared worker
     expect(content).toMatch(
