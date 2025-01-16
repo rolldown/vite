@@ -397,10 +397,11 @@
   import contains from 'es5-ext/string/#/contains'
   import { last } from '@vitejs/test-resolve-sharp-dir'
 
-  text(
-    '.path-contains-sharp-symbol',
-    `[success] ${contains.call('#', '#')} ${last.call('#')}`,
-  )
+  // NOTE: skip for now due to https://github.com/rolldown/rolldown/issues/3364
+  // text(
+  //   '.path-contains-sharp-symbol',
+  //   `[success] ${contains.call('#', '#')} ${last.call('#')}`,
+  // )
 
   import nonNormalizedAbsolute from '@non-normalized'
   text('.non-normalized', nonNormalizedAbsolute)

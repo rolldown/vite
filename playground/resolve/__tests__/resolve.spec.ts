@@ -183,7 +183,8 @@ test('resolve.conditions', async () => {
   expect(await page.textContent('.custom-condition')).toMatch('[success]')
 })
 
-test('resolve package that contains # in path', async () => {
+// NOTE: skip for now due to https://github.com/rolldown/rolldown/issues/3364
+test.skip('resolve package that contains # in path', async () => {
   expect(await page.textContent('.path-contains-sharp-symbol')).toMatch(
     '[success] true #',
   )
