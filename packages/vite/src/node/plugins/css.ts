@@ -9,6 +9,7 @@ import type {
   InternalModuleFormat,
   OutputAsset,
   OutputChunk,
+  Plugin as RawRolldownPlugin,
   RenderedChunk,
   RolldownPlugin,
   RollupError,
@@ -312,7 +313,7 @@ export function cssPlugin(config: ResolvedConfig): RolldownPlugin {
     })
   }
 
-  return {
+  const plugin: RolldownPlugin = {
     name: 'vite:css',
 
     buildStart() {
@@ -367,90 +368,98 @@ export function cssPlugin(config: ResolvedConfig): RolldownPlugin {
         }
       },
     },
-
-    transform: {
-      filter: {
-        id: {
-          include: [CSS_LANGS_RE],
-          exclude: [commonjsProxyRE, SPECIAL_QUERY_RE],
-        },
-      },
-      async handler(raw, id) {
-        const { environment } = this
-        if (
-          !isCSSRequest(id) ||
-          commonjsProxyRE.test(id) ||
-          SPECIAL_QUERY_RE.test(id)
-        ) {
-          return
-        }
-        const resolveUrl = (url: string, importer?: string) =>
-          idResolver(environment, url, importer)
-
-        const urlReplacer: CssUrlReplacer = async (url, importer) => {
-          const decodedUrl = decodeURI(url)
-          if (checkPublicFile(decodedUrl, config)) {
-            if (encodePublicUrlsInCSS(config)) {
-              return publicFileToBuiltUrl(decodedUrl, config)
-            } else {
-              return joinUrlSegments(config.base, decodedUrl)
-            }
-          }
-          const [id, fragment] = decodedUrl.split('#')
-          let resolved = await resolveUrl(id, importer)
-          if (resolved) {
-            if (fragment) resolved += '#' + fragment
-            return fileToUrl(this, resolved)
-          }
-          if (config.command === 'build') {
-            const isExternal = config.build.rollupOptions.external
-              ? resolveUserExternal(
-                  config.build.rollupOptions.external,
-                  decodedUrl, // use URL as id since id could not be resolved
-                  id,
-                  false,
-                )
-              : false
-
-            if (!isExternal) {
-              // #9800 If we cannot resolve the css url, leave a warning.
-              config.logger.warnOnce(
-                `\n${decodedUrl} referenced in ${id} didn't resolve at build time, it will remain unchanged to be resolved at runtime`,
-              )
-            }
-          }
-          return url
-        }
-
-        const {
-          code: css,
-          modules,
-          deps,
-          map,
-        } = await compileCSS(
-          environment,
-          id,
-          raw,
-          preprocessorWorkerController!,
-          urlReplacer,
-        )
-        if (modules) {
-          moduleCache.set(id, modules)
-        }
-
-        if (deps) {
-          for (const file of deps) {
-            this.addWatchFile(file)
-          }
-        }
-
-        return {
-          code: css,
-          map,
-        }
+  }
+  const transformHook: RawRolldownPlugin['transform'] = {
+    filter: {
+      id: {
+        include: [CSS_LANGS_RE],
+        exclude: [commonjsProxyRE, SPECIAL_QUERY_RE],
       },
     },
+    async handler(raw, id) {
+      const { environment } = this
+      if (
+        !isCSSRequest(id) ||
+        commonjsProxyRE.test(id) ||
+        SPECIAL_QUERY_RE.test(id)
+      ) {
+        return
+      }
+      const resolveUrl = (url: string, importer?: string) =>
+        idResolver(environment, url, importer)
+
+      const urlReplacer: CssUrlReplacer = async (url, importer) => {
+        const decodedUrl = decodeURI(url)
+        if (checkPublicFile(decodedUrl, config)) {
+          if (encodePublicUrlsInCSS(config)) {
+            return publicFileToBuiltUrl(decodedUrl, config)
+          } else {
+            return joinUrlSegments(config.base, decodedUrl)
+          }
+        }
+        const [id, fragment] = decodedUrl.split('#')
+        let resolved = await resolveUrl(id, importer)
+        if (resolved) {
+          if (fragment) resolved += '#' + fragment
+          return fileToUrl(this, resolved)
+        }
+        if (config.command === 'build') {
+          const isExternal = config.build.rollupOptions.external
+            ? resolveUserExternal(
+                config.build.rollupOptions.external,
+                decodedUrl, // use URL as id since id could not be resolved
+                id,
+                false,
+              )
+            : false
+
+          if (!isExternal) {
+            // #9800 If we cannot resolve the css url, leave a warning.
+            config.logger.warnOnce(
+              `\n${decodedUrl} referenced in ${id} didn't resolve at build time, it will remain unchanged to be resolved at runtime`,
+            )
+          }
+        }
+        return url
+      }
+
+      const {
+        code: css,
+        modules,
+        deps,
+        map,
+      } = await compileCSS(
+        environment,
+        id,
+        raw,
+        preprocessorWorkerController!,
+        urlReplacer,
+      )
+      if (modules) {
+        moduleCache.set(id, modules)
+      }
+
+      if (deps) {
+        for (const file of deps) {
+          this.addWatchFile(file)
+        }
+      }
+
+      return {
+        code: css,
+        map,
+      }
+    },
   }
+
+  // for backward compat, make `plugin.transform` a function
+  // but still keep the `filter` and `handler` properties
+  // so that rolldown can use `filter`
+  plugin.transform = transformHook.handler
+  ;(plugin.transform as any).filter = transformHook.filter
+  ;(plugin.transform as any).handler = transformHook.handler
+
+  return plugin
 }
 
 /**
