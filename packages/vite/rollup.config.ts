@@ -110,6 +110,7 @@ const nodeConfig = defineConfig({
   external: [
     /^vite\//,
     'fsevents',
+    'rollup/parseAst',
     'rolldown/parseAst',
     'rolldown/experimental',
     /^tsx\//,
