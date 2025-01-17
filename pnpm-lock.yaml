@@ -232,9 +232,6 @@ importers:
       rolldown:
         specifier: 1.0.0-beta.1-commit.298dd8b
         version: 1.0.0-beta.1-commit.298dd8b(@babel/runtime@7.26.0)(typescript@5.7.2)
-      rollup:
-        specifier: ^4.23.0
-        version: 4.30.0
     optionalDependencies:
       fsevents:
         specifier: ~2.3.3
@@ -372,6 +369,9 @@ importers:
       resolve.exports:
         specifier: ^2.0.3
         version: 2.0.3
+      rollup:
+        specifier: ^4.23.0
+        version: 4.30.0
       rollup-plugin-dts:
         specifier: ^6.1.1
         version: 6.1.1(rollup@4.30.0)(typescript@5.7.2)

@@ -87,8 +87,7 @@
   "dependencies": {
     "lightningcss": "^1.28.2",
     "postcss": "^8.4.49",
-    "rolldown": "1.0.0-beta.1-commit.298dd8b",
-    "rollup": "^4.23.0"
+    "rolldown": "1.0.0-beta.1-commit.298dd8b"
   },
   "optionalDependencies": {
     "fsevents": "~2.3.3"
@@ -138,6 +137,7 @@
     "postcss-load-config": "^6.0.1",
     "postcss-modules": "^6.0.1",
     "resolve.exports": "^2.0.3",
+    "rollup": "^4.23.0",
     "rollup-plugin-dts": "^6.1.1",
     "rollup-plugin-esbuild": "^6.1.1",
     "rollup-plugin-license": "^3.5.3",
