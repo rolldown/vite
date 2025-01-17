@@ -135,6 +135,7 @@ export type {
 } from './plugins/css'
 export type { JsonOptions } from './plugins/json'
 export type { EsbuildTransformOptions } from 'types/internal/esbuildOptions'
+export type { OxcOptions } from './plugins/oxc'
 export type { ESBuildOptions, ESBuildTransformResult } from './plugins/esbuild'
 export type { Manifest, ManifestChunk } from './plugins/manifest'
 export type { ResolveOptions, InternalResolveOptions } from './plugins/resolve'
