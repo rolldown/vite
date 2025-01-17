@@ -19,7 +19,7 @@ import {
 import type { ResolvedConfig } from '../config'
 import type { Plugin, PluginContext } from '../plugin'
 import { cleanUrl } from '../../shared/utils'
-import type { Logger } from '..'
+import type { Environment, Logger } from '..'
 import type { ViteDevServer } from '../server'
 import type { ESBuildOptions } from './esbuild'
 import { loadTsconfigJsonForFile } from './esbuild'
@@ -301,6 +301,34 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
     jsxExclude || /\.(m?[jt]s|tsx)$/,
   )
 
+  const getModifiedOxcTransformOptions = (
+    oxcTransformOptions: OxcTransformOptions,
+    id: string,
+    environment: Environment,
+  ): OxcTransformOptions => {
+    const result: OxcTransformOptions = {
+      ...oxcTransformOptions,
+      sourcemap:
+        environment.mode !== 'build' || !!environment.config.build.sourcemap,
+    }
+
+    const jsxOptions = result.jsx
+    // disable refresh at ssr
+    if (
+      environment.config.consumer === 'server' &&
+      typeof jsxOptions === 'object' &&
+      jsxOptions.refresh
+    ) {
+      result.jsx = { ...jsxOptions, refresh: false }
+    }
+
+    if ((jsxFilter(id) || jsxFilter(cleanUrl(id))) && !result.lang) {
+      result.lang = 'jsx'
+    }
+
+    return result
+  }
+
   let server: ViteDevServer
 
   return {
@@ -310,30 +338,16 @@ export function oxcPlugin(config: ResolvedConfig): Plugin {
     },
     async transform(code, id) {
       if (filter(id) || filter(cleanUrl(id))) {
-        const oxcTransformJsxOptions = oxcTransformOptions.jsx
-        // disable refresh at ssr
-        if (
-          this.environment.config.consumer === 'server' &&
-          typeof oxcTransformJsxOptions === 'object' &&
-          oxcTransformJsxOptions.refresh
-        ) {
-          oxcTransformJsxOptions.refresh = false
-        }
-        if (
-          (jsxFilter(id) || jsxFilter(cleanUrl(id))) &&
-          !oxcTransformOptions.lang
-        ) {
-          oxcTransformOptions.lang = 'jsx'
-        }
-        oxcTransformOptions.sourcemap =
-          this.environment.mode !== 'build' ||
-          !!this.environment.config.build.sourcemap
-
+        const modifiedOxcTransformOptions = getModifiedOxcTransformOptions(
+          oxcTransformOptions,
+          id,
+          this.environment,
+        )
         const result = await transformWithOxc(
           this,
           code,
           id,
-          oxcTransformOptions,
+          modifiedOxcTransformOptions,
           undefined,
           config,
           server?.watcher,
