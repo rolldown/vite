@@ -107,15 +107,19 @@ export async function transformWithOxc(
         }
 
         switch (loadedCompilerOptions.jsx) {
-          case 'react-jsxdev':
-            jsxOptions.runtime = 'automatic'
-            jsxOptions.development = true
-            break
           case 'react':
             jsxOptions.runtime = 'classic'
+            // this option should not be set when using classic runtime
+            jsxOptions.importSource = undefined
             break
+          case 'react-jsxdev':
+            jsxOptions.development = true
+          // eslint-disable-next-line no-fallthrough
           case 'react-jsx':
             jsxOptions.runtime = 'automatic'
+            // these options should not be set when using automatic runtime
+            jsxOptions.pragma = undefined
+            jsxOptions.pragmaFrag = undefined
             break
           default:
             break
@@ -563,9 +567,18 @@ export function convertEsbuildConfigToOxcConfig(
     switch (esbuildTransformOptions.jsx) {
       case 'automatic':
         jsxOptions.runtime = 'automatic'
+        if (esbuildTransformOptions.jsxImportSource) {
+          jsxOptions.importSource = esbuildTransformOptions.jsxImportSource
+        }
         break
       case 'transform':
         jsxOptions.runtime = 'classic'
+        if (esbuildTransformOptions.jsxFactory) {
+          jsxOptions.pragma = esbuildTransformOptions.jsxFactory
+        }
+        if (esbuildTransformOptions.jsxFragment) {
+          jsxOptions.pragmaFrag = esbuildTransformOptions.jsxFragment
+        }
         break
       default:
         break
@@ -573,15 +586,6 @@ export function convertEsbuildConfigToOxcConfig(
 
     if (esbuildTransformOptions.jsxDev) {
       jsxOptions.development = true
-    }
-    if (esbuildTransformOptions.jsxFactory) {
-      jsxOptions.pragma = esbuildTransformOptions.jsxFactory
-    }
-    if (esbuildTransformOptions.jsxFragment) {
-      jsxOptions.pragmaFrag = esbuildTransformOptions.jsxFragment
-    }
-    if (esbuildTransformOptions.jsxImportSource) {
-      jsxOptions.importSource = esbuildTransformOptions.jsxImportSource
     }
 
     oxcOptions.jsx = jsxOptions
