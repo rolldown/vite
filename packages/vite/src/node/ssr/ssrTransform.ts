@@ -1,5 +1,4 @@
 import path from 'node:path'
-import MagicString from 'magic-string'
 import type { RollupAstNode } from 'rollup'
 import type { SourceMap } from 'rolldown'
 import type {
@@ -18,7 +17,10 @@ import type {
 import { extract_names as extractNames } from 'periscopic'
 import { walk as eswalk } from 'estree-walker'
 import type { RawSourceMap } from '@ampproject/remapping'
-import { parseAstAsync as rollupParseAstAsync } from 'rollup/parseAst'
+import {
+  MagicStringWrapper,
+  parseAstGenericAsync as rolldownParseAstGenericAsync,
+} from '../parseAst'
 import type { TransformResult } from '../server/transformRequest'
 import {
   combineSourcemaps,
@@ -80,11 +82,12 @@ async function ssrTransformScript(
   url: string,
   originalCode: string,
 ): Promise<TransformResult | null> {
-  const s = new MagicString(code)
-
   let ast: any
+  let s: MagicStringWrapper
   try {
-    ast = await rollupParseAstAsync(code)
+    const result = await rolldownParseAstGenericAsync(code)
+    ast = result.program
+    s = new MagicStringWrapper(result.magicString)
   } catch (err) {
     // enhance known rollup errors
     // https://github.com/rollup/rollup/blob/42e587e0e37bc0661aa39fe7ad6f1d7fd33f825c/src/utils/bufferToAst.ts#L17-L22
@@ -208,11 +211,13 @@ async function ssrTransformScript(
 
   // 1. check all import statements and record id -> importName map
   for (const node of imports) {
+    // NOTE: node.specifiers can be null in OXC: https://github.com/oxc-project/oxc/issues/2854#issuecomment-2595115817
+    const specifiers = node.specifiers ?? []
     // import foo from 'foo' --> foo -> __import_foo__.default
     // import { baz } from 'foo' --> baz -> __import_foo__.baz
     // import * as ok from 'foo' --> ok -> __import_foo__
     const importId = defineImport(hoistIndex, node, {
-      importedNames: node.specifiers
+      importedNames: specifiers
         .map((s) => {
           if (s.type === 'ImportSpecifier')
             return getIdentifierNameOrLiteralValue(s.imported) as string
@@ -220,7 +225,7 @@ async function ssrTransformScript(
         })
         .filter(isDefined),
     })
-    for (const spec of node.specifiers) {
+    for (const spec of specifiers) {
       if (spec.type === 'ImportSpecifier') {
         if (spec.imported.type === 'Identifier') {
           idToImportMap.set(
@@ -363,6 +368,9 @@ async function ssrTransformScript(
           stmt.type !== 'FunctionDeclaration' &&
           stmt.type !== 'ClassDeclaration' &&
           stmt.type !== 'BlockStatement' &&
+          // NOTE: OXC uses `FunctionBody` instead of `BlockStatement`
+          // https://github.com/oxc-project/oxc/issues/2854
+          (stmt.type as any) !== 'FunctionBody' &&
           stmt.type !== 'ImportDeclaration'
         ) {
           s.appendLeft(stmt.end, ';')
@@ -524,7 +532,7 @@ function walk(
   }
 
   ;(eswalk as any)(root, {
-    enter(node: Node, parent: Node | null) {
+    enter(node: Node, parent: Node | null, prop: string) {
       if (node.type === 'ImportDeclaration') {
         return this.skip()
       }
@@ -536,6 +544,10 @@ function walk(
         node.type === 'StaticBlock'
       ) {
         onStatements(node.body as Node[])
+        // NOTE: OXC uses `FunctionBody` instead of `BlockStatement`
+        // https://github.com/oxc-project/oxc/issues/2854
+      } else if ((node.type as any) === 'FunctionBody') {
+        onStatements((node as any).statements)
       } else if (node.type === 'SwitchCase') {
         onStatements(node.consequent as Node[])
       }
@@ -563,7 +575,7 @@ function walk(
       if (node.type === 'Identifier') {
         if (
           !isInScope(node.name, parentStack) &&
-          isRefIdentifier(node, parent!, parentStack)
+          isRefIdentifier(node, parent!, parentStack, prop)
         ) {
           // record the identifier, for DFS -> BFS
           identifiers.push([node, parentStack.slice(0)])
@@ -584,13 +596,14 @@ function walk(
         }
         // walk function expressions and add its arguments to known identifiers
         // so that we don't prefix them
-        node.params.forEach((p) => {
+        // NOTE: `node.params.items` is used for OXC instead of `node.params`: https://github.com/oxc-project/oxc/issues/2854
+        ;(node.params as any).items.forEach((p: Node) => {
           if (p.type === 'ObjectPattern' || p.type === 'ArrayPattern') {
             handlePattern(p, node)
             return
           }
           ;(eswalk as any)(p.type === 'AssignmentPattern' ? p.left : p, {
-            enter(child: Node, parent: Node | undefined) {
+            enter(child: Node, parent: Node | undefined, prop: string) {
               // skip params default value of destructure
               if (
                 parent?.type === 'AssignmentPattern' &&
@@ -600,7 +613,7 @@ function walk(
               }
               if (child.type !== 'Identifier') return
               // do not record as scope variable if is a destructuring keyword
-              if (isStaticPropertyKey(child, parent)) return
+              if (isStaticPropertyKey(child, parent, prop)) return
               // do not record if this is a default value
               // assignment of a destructuring variable
               if (
@@ -623,9 +636,14 @@ function walk(
       } else if (node.type === 'ClassExpression' && node.id) {
         // A class expression name could shadow an import, so add its name to the scope
         setScope(node, node.id.name)
-      } else if (node.type === 'Property' && parent!.type === 'ObjectPattern') {
+      } else if (
+        // NOTE: OXC uses `BindingProperty` instead of `Property`
+        // https://github.com/oxc-project/oxc/issues/2854#issuecomment-2595115817
+        (node.type as any) === 'BindingProperty' &&
+        parent!.type === 'ObjectPattern'
+      ) {
         // mark property in destructuring pattern
-        setIsNodeInPattern(node)
+        setIsNodeInPattern(node as Property)
       } else if (node.type === 'VariableDeclarator') {
         const parentFunction = findParentScope(
           parentStack,
@@ -635,7 +653,9 @@ function walk(
           handlePattern(node.id, parentFunction)
         }
       } else if (node.type === 'CatchClause' && node.param) {
-        handlePattern(node.param, node)
+        // NOTE: OXC has CatchParameter inside CatchClause
+        // https://github.com/oxc-project/oxc/issues/2854#issuecomment-2595115817
+        handlePattern((node.param as any).pattern, node)
       }
     },
 
@@ -661,10 +681,17 @@ function walk(
   })
 }
 
-function isRefIdentifier(id: Identifier, parent: _Node, parentStack: _Node[]) {
+function isRefIdentifier(
+  id: Identifier,
+  parent: _Node,
+  parentStack: _Node[],
+  prop: string,
+) {
   // declaration id
   if (
-    parent.type === 'CatchClause' ||
+    // NOTE: OXC has CatchParameter inside CatchClause
+    // https://github.com/oxc-project/oxc/issues/2854#issuecomment-2595115817
+    (parent.type as any) === 'CatchParameter' ||
     ((parent.type === 'VariableDeclarator' ||
       parent.type === 'ClassDeclaration') &&
       parent.id === id)
@@ -689,7 +716,7 @@ function isRefIdentifier(id: Identifier, parent: _Node, parentStack: _Node[]) {
   }
 
   // property key
-  if (isStaticPropertyKey(id, parent)) {
+  if (isStaticPropertyKey(id, parent, prop)) {
     return false
   }
 
@@ -708,9 +735,10 @@ function isRefIdentifier(id: Identifier, parent: _Node, parentStack: _Node[]) {
 
   // member expression property
   if (
-    parent.type === 'MemberExpression' &&
-    parent.property === id &&
-    !parent.computed
+    // NOTE: OXC uses StaticMemberExpression instead of MemberExpression + `computed: false`
+    // https://github.com/oxc-project/oxc/issues/2854
+    (parent.type as any) === 'StaticMemberExpression' &&
+    (parent as any).property === id
   ) {
     return false
   }
@@ -728,17 +756,30 @@ function isRefIdentifier(id: Identifier, parent: _Node, parentStack: _Node[]) {
 }
 
 const isStaticProperty = (node: _Node): node is Property =>
-  node.type === 'Property' && !node.computed
+  // NOTE: OXC uses `ObjectProperty` instead of `Property`
+  // https://github.com/oxc-project/oxc/issues/2854#issuecomment-2595115817
+  ((node.type as any) === 'ObjectProperty' ||
+    (node.type as any) === 'BindingProperty') &&
+  !(node as Property).computed
 
-const isStaticPropertyKey = (node: _Node, parent: _Node | undefined) =>
-  parent && isStaticProperty(parent) && parent.key === node
+const isStaticPropertyKey = (
+  node: _Node,
+  parent: _Node | undefined,
+  prop: string,
+) =>
+  // NOTE: probably OXC has a similar problem with handling references here
+  // https://github.com/vitejs/vite/pull/14508#discussion_r1341972441
+  parent && isStaticProperty(parent) && prop === 'key' && parent.key === node
 
 const functionNodeTypeRE = /Function(?:Expression|Declaration)$|Method$/
 function isFunction(node: _Node): node is FunctionNode {
   return functionNodeTypeRE.test(node.type)
 }
 
-const blockNodeTypeRE = /^BlockStatement$|^For(?:In|Of)?Statement$/
+// NOTE: OXC uses `FunctionBody` instead of `BlockStatement`
+// https://github.com/oxc-project/oxc/issues/2854
+const blockNodeTypeRE =
+  /^BlockStatement$|^For(?:In|Of)?Statement$|^FunctionBody$/
 function isBlock(node: _Node) {
   return blockNodeTypeRE.test(node.type)
 }
@@ -754,7 +795,13 @@ function isInDestructuringAssignment(
   parent: _Node,
   parentStack: _Node[],
 ): boolean {
-  if (parent.type === 'Property' || parent.type === 'ArrayPattern') {
+  // NOTE: OXC uses `ObjectProperty` instead of `Property`
+  // https://github.com/oxc-project/oxc/issues/2854#issuecomment-2595115817
+  if (
+    (parent.type as any) === 'ObjectProperty' ||
+    (parent.type as any) === 'BindingProperty' ||
+    parent.type === 'ArrayPattern'
+  ) {
     return parentStack.some((i) => i.type === 'AssignmentExpression')
   }
   return false

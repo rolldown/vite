@@ -1,8 +1,8 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
 import { stripLiteral } from 'strip-literal'
-import { parseAst } from 'rollup/parseAst'
 import type { RolldownPlugin } from 'rolldown'
+import { parseAst } from '../parseAst'
 import type { ResolvedConfig } from '../config'
 import {
   injectQuery,

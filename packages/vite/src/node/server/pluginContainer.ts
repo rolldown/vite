@@ -32,7 +32,6 @@ SOFTWARE.
 import fs from 'node:fs'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
-import { parseAst as rollupParseAst } from 'rollup/parseAst'
 import type {
   AsyncPluginHooks,
   CustomPluginOptions,
@@ -62,6 +61,7 @@ import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import MagicString from 'magic-string'
 import type { FSWatcher } from 'dep-types/chokidar'
 import colors from 'picocolors'
+import { parseAst as rolldownParseAst } from '../parseAst'
 import type { Plugin } from '../plugin'
 import {
   combineSourcemaps,
@@ -578,7 +578,7 @@ class PluginContext
   }
 
   parse(code: string, opts: any) {
-    return rollupParseAst(code, opts)
+    return rolldownParseAst(code, opts)
   }
 
   async resolve(

@@ -9,12 +9,12 @@ import type {
   ImportSpecifier,
 } from 'es-module-lexer'
 import { init, parse as parseImports } from 'es-module-lexer'
-import { parseAst } from 'rollup/parseAst'
 import type { StaticImport } from 'mlly'
 import { ESM_STATIC_IMPORT_RE, parseStaticImport } from 'mlly'
 import { makeLegalIdentifier } from '@rollup/pluginutils'
 import type { PartialResolvedId, RollupError } from 'rolldown'
 import type { Identifier, Literal } from 'estree'
+import { parseAst } from '../parseAst'
 import {
   CLIENT_DIR,
   CLIENT_PUBLIC_PATH,
@@ -970,7 +970,8 @@ export function transformCjsImport(
     node.type === 'ImportDeclaration' ||
     node.type === 'ExportNamedDeclaration'
   ) {
-    if (!node.specifiers.length) {
+    // NOTE: node.specifiers can be null in OXC: https://github.com/oxc-project/oxc/issues/2854#issuecomment-2595115817
+    if (!node.specifiers?.length) {
       return `import "${url}"`
     }
 

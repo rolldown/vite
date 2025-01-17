@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'vitest'
-import { parseAst } from 'rollup/parseAst'
 import { assetImportMetaUrlPlugin } from '../../plugins/assetImportMetaUrl'
 import { resolveConfig } from '../../config'
 import { PartialEnvironment } from '../../baseEnvironment'
@@ -12,7 +11,7 @@ async function createAssetImportMetaurlPluginTransform() {
   return async (code: string) => {
     // @ts-expect-error transform.handler should exist
     const result = await instance.transform.handler.call(
-      { environment, parse: parseAst },
+      { environment },
       code,
       'foo.ts',
     )
