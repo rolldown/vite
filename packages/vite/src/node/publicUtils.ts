@@ -10,6 +10,8 @@ export {
   DEFAULT_SERVER_CONDITIONS as defaultServerConditions,
   DEFAULT_SERVER_MAIN_FIELDS as defaultServerMainFields,
 } from './constants'
+// NOTE: export for backward compat
+export const esbuildVersion = '0.24.2'
 export {
   splitVendorChunkPlugin,
   splitVendorChunk,
