@@ -610,41 +610,37 @@ export function runOptimizeDeps(
     return context
       .build()
       .then((result) => {
-        const depsForSrc: Record<string, OptimizedDepInfo[]> = {}
+        const depForEntryFileName: Record<string, OptimizedDepInfo> = {}
         for (const dep of Object.values(depsInfo)) {
-          if (dep.src) {
-            // One chunk maybe corresponding multiply entry
-            depsForSrc[dep.src] ||= []
-            depsForSrc[dep.src].push(dep)
-          }
+          const entryFileName = flattenId(dep.id) + '.js'
+          depForEntryFileName[entryFileName] = dep
         }
 
         for (const chunk of result.output) {
           if (chunk.type !== 'chunk') continue
 
           if (chunk.isEntry) {
-            const deps = depsForSrc[normalizePath(chunk.facadeModuleId!)]
-            for (const { exportsData, file, id, ...info } of deps) {
-              addOptimizedDepInfo(metadata, 'optimized', {
+            const { exportsData, file, id, ...info } =
+              depForEntryFileName[chunk.fileName]
+            addOptimizedDepInfo(metadata, 'optimized', {
+              id,
+              file,
+              ...info,
+              // We only need to hash the output.imports in to check for stability, but adding the hash
+              // and file path gives us a unique hash that may be useful for other things in the future
+              fileHash: getHash(
+                metadata.hash + file + JSON.stringify(chunk.modules),
+              ),
+              browserHash: metadata.browserHash,
+              // After bundling we have more information and can warn the user about legacy packages
+              // that require manual configuration
+              needsInterop: needsInterop(
+                environment,
                 id,
-                file,
-                ...info,
-                // We only need to hash the output.imports in to check for stability, but adding the hash
-                // and file path gives us a unique hash that may be useful for other things in the future
-                fileHash: getHash(
-                  metadata.hash + file + JSON.stringify(chunk.modules),
-                ),
-                browserHash: metadata.browserHash,
-                // After bundling we have more information and can warn the user about legacy packages
-                // that require manual configuration
-                needsInterop: needsInterop(
-                  environment,
-                  id,
-                  idToExports[id],
-                  chunk,
-                ),
-              })
-            }
+                idToExports[id],
+                chunk,
+              ),
+            })
           } else {
             const id = chunk.fileName.replace(jsExtensionRE, '')
             const file = getOptimizedDepPath(environment, id)
@@ -796,6 +792,7 @@ async function prepareRolldownOptimizerRun(
       format: 'esm',
       sourcemap: true,
       dir: processingCacheDir,
+      entryFileNames: '[name].js',
       banner:
         platform === 'node'
           ? `import { createRequire } from 'module';const require = createRequire(import.meta.url);`
