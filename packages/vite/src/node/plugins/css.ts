@@ -492,12 +492,9 @@ export function cssPostPlugin(config: ResolvedConfig): RolldownPlugin {
       return path.join(path.dirname(assetFileNames), cssAssetNameDir)
     } else {
       return path.dirname(
-        // @ts-expect-error rolldown does not support function `assetFileNames`
         assetFileNames({
           type: 'asset',
-          name: cssAssetName,
           names: [cssAssetName],
-          originalFileName: null,
           originalFileNames: [],
           source: '/* vite internal call, ignore */',
         }),
