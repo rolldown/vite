@@ -2,7 +2,7 @@ import path from 'node:path'
 import fsp from 'node:fs/promises'
 import { Buffer } from 'node:buffer'
 import * as mrmime from 'mrmime'
-import type { NormalizedOutputOptions, RenderedChunk } from 'rollup'
+import type { NormalizedOutputOptions, RenderedChunk } from 'rolldown'
 import MagicString from 'magic-string'
 import colors from 'picocolors'
 import {
@@ -138,6 +138,8 @@ export function renderAssetUrlInJS(
 export function assetPlugin(config: ResolvedConfig): Plugin {
   registerCustomMime()
 
+  const assetModuleId = new Set<string>()
+
   return {
     name: 'vite:asset',
 
@@ -172,9 +174,12 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
         const file = checkPublicFile(id, config) || cleanUrl(id)
         this.addWatchFile(file)
         // raw query, read file and return as string
-        return `export default ${JSON.stringify(
-          await fsp.readFile(file, 'utf-8'),
-        )}`
+        return {
+          code: `export default ${JSON.stringify(
+            await fsp.readFile(file, 'utf-8'),
+          )}`,
+          moduleType: 'js', // NOTE: needs to be set to avoid double `export default` in `?raw&.txt`s
+        }
       }
 
       if (!urlRE.test(id) && !config.assetsInclude(cleanUrl(id))) {
@@ -192,6 +197,10 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
         }
       }
 
+      // Note: rolldown does not support meta, use a Set instead of it for now
+      if (config.command === 'build') {
+        assetModuleId.add(id)
+      }
       return {
         code: `export default ${JSON.stringify(encodeURIPath(url))}`,
         // Force rollup to keep this module from being shared between other entry points if it's an entrypoint.
@@ -201,6 +210,7 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
             ? 'no-treeshake'
             : false,
         meta: config.command === 'build' ? { 'vite:asset': true } : undefined,
+        moduleType: 'js', // NOTE: needs to be set to avoid double `export default` in `.txt`s
       }
     },
 
@@ -228,7 +238,8 @@ export function assetPlugin(config: ResolvedConfig): Plugin {
           chunk.isEntry &&
           chunk.moduleIds.length === 1 &&
           config.assetsInclude(chunk.moduleIds[0]) &&
-          this.getModuleInfo(chunk.moduleIds[0])?.meta['vite:asset']
+          assetModuleId.has(chunk.moduleIds[0])
+          // this.getModuleInfo(chunk.moduleIds[0])?.meta['vite:asset']
         ) {
           delete bundle[file]
         }

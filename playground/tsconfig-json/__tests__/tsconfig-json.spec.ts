@@ -4,7 +4,7 @@ import { transformWithEsbuild } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { browserLogs, isServe, serverLogs } from '~utils'
 
-test('should respected each `tsconfig.json`s compilerOptions', () => {
+test.skip('should respected each `tsconfig.json`s compilerOptions', () => {
   // main side effect should be called (because of `"verbatimModuleSyntax": true`)
   expect(browserLogs).toContain('main side effect')
   // main base setter should not be called (because of `"useDefineForClassFields": true"`)

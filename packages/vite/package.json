@@ -4,7 +4,7 @@
   "type": "module",
   "license": "MIT",
   "author": "Evan You",
-  "description": "Native-ESM powered web dev build tool",
+  "description": "Vite on Rolldown preview",
   "bin": {
     "vite": "bin/vite.js"
   },
@@ -85,9 +85,9 @@
   },
   "//": "READ CONTRIBUTING.md to understand what to put under deps vs. devDeps!",
   "dependencies": {
-    "esbuild": "^0.24.2",
+    "lightningcss": "^1.28.2",
     "postcss": "^8.4.49",
-    "rollup": "^4.23.0"
+    "rolldown": "1.0.0-beta.3-commit.ce40585"
   },
   "optionalDependencies": {
     "fsevents": "~2.3.3"
@@ -117,12 +117,12 @@
     "dotenv": "^16.4.7",
     "dotenv-expand": "^12.0.1",
     "es-module-lexer": "^1.6.0",
+    "esbuild": "^0.24.2",
     "escape-html": "^1.0.3",
     "estree-walker": "^3.0.3",
     "etag": "^1.8.1",
     "http-proxy": "^1.18.1",
     "launch-editor-middleware": "^2.9.1",
-    "lightningcss": "^1.28.2",
     "magic-string": "^0.30.17",
     "mlly": "^1.7.3",
     "mrmime": "^2.0.0",
@@ -137,6 +137,7 @@
     "postcss-load-config": "^6.0.1",
     "postcss-modules": "^6.0.1",
     "resolve.exports": "^2.0.3",
+    "rollup": "^4.23.0",
     "rollup-plugin-dts": "^6.1.1",
     "rollup-plugin-esbuild": "^6.1.1",
     "rollup-plugin-license": "^3.5.3",
@@ -155,9 +156,9 @@
   },
   "peerDependencies": {
     "@types/node": "^18.0.0 || ^20.0.0 || >=22.0.0",
+    "esbuild": "^0.24.0",
     "jiti": ">=1.21.0",
     "less": "*",
-    "lightningcss": "^1.21.0",
     "sass": "*",
     "sass-embedded": "*",
     "stylus": "*",
@@ -168,6 +169,9 @@
   },
   "peerDependenciesMeta": {
     "@types/node": {
+      "optional": true
+    },
+    "esbuild": {
       "optional": true
     },
     "jiti": {
@@ -186,9 +190,6 @@
       "optional": true
     },
     "sugarss": {
-      "optional": true
-    },
-    "lightningcss": {
       "optional": true
     },
     "terser": {

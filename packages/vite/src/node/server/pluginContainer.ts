@@ -32,7 +32,6 @@ SOFTWARE.
 import fs from 'node:fs'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
-import { parseAst as rollupParseAst } from 'rollup/parseAst'
 import type {
   AsyncPluginHooks,
   CustomPluginOptions,
@@ -56,12 +55,13 @@ import type {
   SourceDescription,
   SourceMap,
   TransformResult,
-} from 'rollup'
+} from 'rolldown'
 import type { RawSourceMap } from '@ampproject/remapping'
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import MagicString from 'magic-string'
 import type { FSWatcher } from 'dep-types/chokidar'
 import colors from 'picocolors'
+import { parseAst as rolldownParseAst } from '../parseAst'
 import type { Plugin } from '../plugin'
 import {
   combineSourcemaps,
@@ -73,6 +73,7 @@ import {
   normalizePath,
   numberToPos,
   prettifyUrl,
+  rolldownVersion,
   rollupVersion,
   timeFrom,
 } from '../utils'
@@ -118,6 +119,10 @@ export function throwClosedServerError(): never {
   throw err
 }
 
+// NOTE: add a env var to use parseAst from rollup for now
+const useLegacyParseAst = !!process.env.VITE_USE_LEGACY_PARSE_AST
+let legacyParseAst: typeof import('rollup/parseAst').parseAst
+
 export interface PluginContainerOptions {
   cwd?: string
   output?: OutputOptions
@@ -140,6 +145,9 @@ export async function createEnvironmentPluginContainer(
     plugins,
     watcher,
   )
+  if (useLegacyParseAst) {
+    legacyParseAst = await import('rollup/parseAst').then((mod) => mod.parseAst)
+  }
   await container.resolveRollupOptions()
   return container
 }
@@ -185,6 +193,7 @@ class EnvironmentPluginContainer {
     this.minimalContext = {
       meta: {
         rollupVersion,
+        rolldownVersion,
         watchMode: true,
       },
       debug: noop,
@@ -351,6 +360,7 @@ class EnvironmentPluginContainer {
        */
       scan?: boolean
       isEntry?: boolean
+      kind?: 'import' | 'dynamic-import' | 'require-call'
     },
   ): Promise<PartialResolvedId | null> {
     if (!this._started) {
@@ -361,6 +371,7 @@ class EnvironmentPluginContainer {
     const skipCalls = options?.skipCalls
     const scan = !!options?.scan
     const ssr = this.environment.config.consumer === 'server'
+    const kind = options?.kind
     const ctx = new ResolveIdContext(this, skip, skipCalls, scan)
 
     const mergedSkip = new Set<Plugin>(skip)
@@ -389,6 +400,7 @@ class EnvironmentPluginContainer {
           isEntry: !!options?.isEntry,
           ssr,
           scan,
+          kind,
         }),
       )
       if (!result) continue
@@ -463,7 +475,9 @@ class EnvironmentPluginContainer {
     },
   ): Promise<{ code: string; map: SourceMap | { mappings: '' } | null }> {
     const ssr = this.environment.config.consumer === 'server'
-    const optionsWithSSR = options ? { ...options, ssr } : { ssr }
+    const optionsWithSSR = options
+      ? { ...options, ssr, moduleType: 'js' }
+      : { ssr, moduleType: 'js' }
     const inMap = options?.inMap
 
     const ctx = new TransformPluginContext(this, id, code, inMap as SourceMap)
@@ -545,7 +559,9 @@ class EnvironmentPluginContainer {
   }
 }
 
-class PluginContext implements Omit<RollupPluginContext, 'cache'> {
+class PluginContext
+  implements Omit<RollupPluginContext, 'cache' | 'emitChunk'>
+{
   ssr = false
   _scan = false
   _activeId: string | null = null
@@ -554,6 +570,11 @@ class PluginContext implements Omit<RollupPluginContext, 'cache'> {
   _resolveSkipCalls?: readonly SkipInformation[]
   meta: RollupPluginContext['meta']
   environment: Environment
+
+  get pluginName() {
+    // TODO(sapphi-red): remove `!` later
+    return this._plugin.name!
+  }
 
   constructor(
     public _plugin: Plugin,
@@ -564,7 +585,10 @@ class PluginContext implements Omit<RollupPluginContext, 'cache'> {
   }
 
   parse(code: string, opts: any) {
-    return rollupParseAst(code, opts)
+    if (useLegacyParseAst) {
+      return legacyParseAst(code, opts)
+    }
+    return rolldownParseAst(code, opts)
   }
 
   async resolve(
@@ -858,7 +882,7 @@ class LoadPluginContext extends PluginContext {
 
 class TransformPluginContext
   extends LoadPluginContext
-  implements Omit<RollupTransformPluginContext, 'cache'>
+  implements Omit<RollupTransformPluginContext, 'cache' | 'emitChunk'>
 {
   filename: string
   originalCode: string
@@ -956,7 +980,7 @@ class TransformPluginContext
         includeContent: true,
         hires: 'boundary',
         source: cleanUrl(this.filename),
-      })
+      }) as SourceMap
     }
     return map
   }
