@@ -626,10 +626,10 @@ export function runOptimizeDeps(
               id,
               file,
               ...info,
-              // We only need to hash the output.imports in to check for stability, but adding the hash
+              // We only need to hash the chunk.imports in to check for stability, but adding the hash
               // and file path gives us a unique hash that may be useful for other things in the future
               fileHash: getHash(
-                metadata.hash + file + JSON.stringify(chunk.modules),
+                metadata.hash + file + JSON.stringify(chunk.imports),
               ),
               browserHash: metadata.browserHash,
               // After bundling we have more information and can warn the user about legacy packages
