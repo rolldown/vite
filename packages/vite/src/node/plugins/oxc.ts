@@ -517,6 +517,7 @@ async function generateRuntimeHelpers(
     cwd: rolldownDir,
     input: 'entrypoint',
     platform: 'neutral',
+    logLevel: 'silent',
     plugins: [
       {
         name: 'entrypoint',
