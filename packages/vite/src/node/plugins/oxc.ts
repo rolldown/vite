@@ -87,45 +87,47 @@ export async function transformWithOxc(
         ensureWatchedFile(watcher, tsconfigFile, config.root)
       }
       const loadedCompilerOptions = loadedTsconfig.compilerOptions ?? {}
-      // tsc compiler experimentalDecorators/target/useDefineForClassFields
+      // TODO: experimentalDecorators
 
-      if (loadedCompilerOptions.jsx === 'preserve') {
-        resolvedOptions.jsx = 'preserve'
-      } else {
-        const jsxOptions = {
-          ...(resolvedOptions.jsx === 'preserve' ? {} : resolvedOptions.jsx),
-        }
+      // when both the normal options and tsconfig is set,
+      // we want to prioritize the normal options
+      if (resolvedOptions.jsx === undefined) {
+        if (loadedCompilerOptions.jsx === 'preserve') {
+          resolvedOptions.jsx = 'preserve'
+        } else {
+          const jsxOptions: OxcJsxOptions = {}
 
-        if (loadedCompilerOptions.jsxFactory) {
-          jsxOptions.pragma = loadedCompilerOptions.jsxFactory
-        }
-        if (loadedCompilerOptions.jsxFragmentFactory) {
-          jsxOptions.pragmaFrag = loadedCompilerOptions.jsxFragmentFactory
-        }
-        if (loadedCompilerOptions.jsxImportSource) {
-          jsxOptions.importSource = loadedCompilerOptions.jsxImportSource
-        }
+          if (loadedCompilerOptions.jsxFactory) {
+            jsxOptions.pragma = loadedCompilerOptions.jsxFactory
+          }
+          if (loadedCompilerOptions.jsxFragmentFactory) {
+            jsxOptions.pragmaFrag = loadedCompilerOptions.jsxFragmentFactory
+          }
+          if (loadedCompilerOptions.jsxImportSource) {
+            jsxOptions.importSource = loadedCompilerOptions.jsxImportSource
+          }
 
-        switch (loadedCompilerOptions.jsx) {
-          case 'react':
-            jsxOptions.runtime = 'classic'
-            // this option should not be set when using classic runtime
-            jsxOptions.importSource = undefined
-            break
-          case 'react-jsxdev':
-            jsxOptions.development = true
-          // eslint-disable-next-line no-fallthrough
-          case 'react-jsx':
-            jsxOptions.runtime = 'automatic'
-            // these options should not be set when using automatic runtime
-            jsxOptions.pragma = undefined
-            jsxOptions.pragmaFrag = undefined
-            break
-          default:
-            break
-        }
+          switch (loadedCompilerOptions.jsx) {
+            case 'react':
+              jsxOptions.runtime = 'classic'
+              // this option should not be set when using classic runtime
+              jsxOptions.importSource = undefined
+              break
+            case 'react-jsxdev':
+              jsxOptions.development = true
+            // eslint-disable-next-line no-fallthrough
+            case 'react-jsx':
+              jsxOptions.runtime = 'automatic'
+              // these options should not be set when using automatic runtime
+              jsxOptions.pragma = undefined
+              jsxOptions.pragmaFrag = undefined
+              break
+            default:
+              break
+          }
 
-        resolvedOptions.jsx = jsxOptions
+          resolvedOptions.jsx = jsxOptions
+        }
       }
 
       /**
