@@ -11,7 +11,7 @@ async function createWorkerImportMetaUrlPluginTransform() {
 
   return async (code: string) => {
     // @ts-expect-error transform should exist
-    const result = await instance.transform.call(
+    const result = await instance.transform.handler.call(
       { environment, parse: parseAst },
       code,
       'foo.ts',
@@ -27,7 +27,7 @@ describe('workerImportMetaUrlPlugin', async () => {
     expect(
       await transform('new Worker(new URL("./worker.js", import.meta.url))'),
     ).toMatchInlineSnapshot(
-      `"new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=classic", import.meta.url))"`,
+      `"new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=classic", '' + import.meta.url))"`,
     )
   })
 
@@ -37,7 +37,7 @@ describe('workerImportMetaUrlPlugin', async () => {
         'new SharedWorker(new URL("./worker.js", import.meta.url))',
       ),
     ).toMatchInlineSnapshot(
-      `"new SharedWorker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=classic", import.meta.url))"`,
+      `"new SharedWorker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=classic", '' + import.meta.url))"`,
     )
   })
 
@@ -47,7 +47,7 @@ describe('workerImportMetaUrlPlugin', async () => {
         'new Worker(new URL("./worker.js", import.meta.url), { type: "module", name: "worker1" })',
       ),
     ).toMatchInlineSnapshot(
-      `"new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", import.meta.url), { type: "module", name: "worker1" })"`,
+      `"new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", '' + import.meta.url), { type: "module", name: "worker1" })"`,
     )
   })
 
@@ -57,7 +57,7 @@ describe('workerImportMetaUrlPlugin', async () => {
         'new Worker(new URL("./worker.js", import.meta.url), { "type": "module", "name": "worker1" })',
       ),
     ).toMatchInlineSnapshot(
-      `"new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", import.meta.url), { "type": "module", "name": "worker1" })"`,
+      `"new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", '' + import.meta.url), { "type": "module", "name": "worker1" })"`,
     )
   })
 
@@ -67,7 +67,7 @@ describe('workerImportMetaUrlPlugin', async () => {
         'const id = 1; new Worker(new URL("./worker.js", import.meta.url), { name: "worker" + id })',
       ),
     ).toMatchInlineSnapshot(
-      `"const id = 1; new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=classic", import.meta.url), { name: "worker" + id })"`,
+      `"const id = 1; new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=classic", '' + import.meta.url), { name: "worker" + id })"`,
     )
   })
 
@@ -77,7 +77,7 @@ describe('workerImportMetaUrlPlugin', async () => {
         'const id = 1; new Worker(new URL("./worker.js", import.meta.url), { name: "worker" + id, type: "module" })',
       ),
     ).toMatchInlineSnapshot(
-      `"const id = 1; new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", import.meta.url), { name: "worker" + id, type: "module" })"`,
+      `"const id = 1; new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", '' + import.meta.url), { name: "worker" + id, type: "module" })"`,
     )
   })
 
@@ -87,7 +87,7 @@ describe('workerImportMetaUrlPlugin', async () => {
         'const worker = new Worker(new URL("./worker.js", import.meta.url), { name: genName(), type: "module"})',
       ),
     ).toMatchInlineSnapshot(
-      `"const worker = new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", import.meta.url), { name: genName(), type: "module"})"`,
+      `"const worker = new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", '' + import.meta.url), { name: genName(), type: "module"})"`,
     )
   })
 
@@ -102,15 +102,17 @@ const worker = new Worker(new URL("./worker.js", import.meta.url), {
 
 worker.addEventListener('message', (ev) => text('.simple-worker-url', JSON.stringify(ev.data)))
 `),
-    ).toMatchInlineSnapshot(`"
-const worker = new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", import.meta.url), {
-    name: genName(),
-    type: "module",
-  },
-)
+    ).toMatchInlineSnapshot(`
+      "
+      const worker = new Worker(new URL(/* @vite-ignore */ "/worker.js?worker_file&type=module", '' + import.meta.url), {
+          name: genName(),
+          type: "module",
+        },
+      )
 
-worker.addEventListener('message', (ev) => text('.simple-worker-url', JSON.stringify(ev.data)))
-"`)
+      worker.addEventListener('message', (ev) => text('.simple-worker-url', JSON.stringify(ev.data)))
+      "
+    `)
   })
 
   test('throws an error when non-static worker options are provided', async () => {

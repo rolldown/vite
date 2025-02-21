@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { build } from 'vite'
-import type { RollupOutput } from 'rollup'
+import type { RolldownOutput } from 'rolldown'
 import type { TerserOptions } from '../../plugins/terser'
 
 const __dirname = resolve(fileURLToPath(import.meta.url), '..')
@@ -32,7 +32,7 @@ describe('terser', () => {
           },
         },
       ],
-    })) as RollupOutput
+    })) as RolldownOutput
     return result.output[0].code
   }
 

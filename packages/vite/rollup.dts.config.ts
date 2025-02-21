@@ -16,7 +16,8 @@ const pkg = JSON.parse(
 const external = [
   /^node:*/,
   /^vite\//,
-  'rollup/parseAst',
+  'rolldown/parseAst',
+  'rolldown/experimental',
   ...Object.keys(pkg.dependencies),
   ...Object.keys(pkg.peerDependencies),
   ...Object.keys(pkg.devDependencies),
@@ -46,17 +47,16 @@ const identifierWithTrailingDollarRE = /\b(\w+)\$\d+\b/g
  * the module that imports the identifer as a named import alias
  */
 const identifierReplacements: Record<string, Record<string, string>> = {
-  rollup: {
-    Plugin$1: 'rollup.Plugin',
-    PluginContext$1: 'rollup.PluginContext',
-    MinimalPluginContext$1: 'rollup.MinimalPluginContext',
-    TransformPluginContext$1: 'rollup.TransformPluginContext',
-    TransformResult$1: 'rollup.TransformResult',
+  rolldown: {
+    Plugin$1: 'rolldown.Plugin',
+    PluginContext$1: 'rolldown.PluginContext',
+    MinimalPluginContext$1: 'rolldown.MinimalPluginContext',
+    TransformPluginContext$1: 'rolldown.TransformPluginContext',
+    TransformResult$1: 'rolldown.TransformResult',
   },
-  esbuild: {
-    TransformResult$2: 'esbuild_TransformResult',
-    TransformOptions$1: 'esbuild_TransformOptions',
-    BuildOptions$1: 'esbuild_BuildOptions',
+  'rolldown/experimental': {
+    TransformOptions$1: 'rolldown_experimental_TransformOptions',
+    TransformResult$2: 'rolldown_experimental_TransformResult',
   },
   'node:https': {
     Server$1: 'HttpsServer',

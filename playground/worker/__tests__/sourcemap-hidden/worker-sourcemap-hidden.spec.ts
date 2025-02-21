@@ -84,7 +84,7 @@ describe.runIf(isBuild)('build', () => {
 
     // worker should have all imports resolved and no exports
     expect(workerContent).not.toMatch(`import`)
-    expect(workerContent).not.toMatch(`export`)
+    expect(workerContent).not.toMatch(/\bexport\b/)
 
     // shared worker should have all imports resolved and no exports
     expect(sharedWorkerContent).not.toMatch(`import`)
@@ -92,17 +92,17 @@ describe.runIf(isBuild)('build', () => {
 
     // chunk
     expect(content).toMatch(
-      `new Worker("/iife-sourcemap-hidden/assets/my-worker`,
+      'new Worker(`/iife-sourcemap-hidden/assets/my-worker',
     )
-    expect(content).toMatch(`new Worker("data:text/javascript;charset=utf-8,"+`)
+    expect(content).toMatch('new Worker(`data:text/javascript;charset=utf-8,`+')
     expect(content).toMatch(
-      `new Worker("/iife-sourcemap-hidden/assets/possible-ts-output-worker`,
-    )
-    expect(content).toMatch(
-      `new Worker("/iife-sourcemap-hidden/assets/worker-nested-worker`,
+      'new Worker(`/iife-sourcemap-hidden/assets/possible-ts-output-worker',
     )
     expect(content).toMatch(
-      `new SharedWorker("/iife-sourcemap-hidden/assets/my-shared-worker`,
+      'new Worker(`/iife-sourcemap-hidden/assets/worker-nested-worker',
+    )
+    expect(content).toMatch(
+      'new SharedWorker(`/iife-sourcemap-hidden/assets/my-shared-worker',
     )
 
     // inlined
@@ -110,7 +110,7 @@ describe.runIf(isBuild)('build', () => {
     expect(content).toMatch(`self.Blob`)
 
     expect(workerNestedWorkerContent).toMatch(
-      `new Worker("/iife-sourcemap-hidden/assets/sub-worker`,
+      'new Worker(`/iife-sourcemap-hidden/assets/sub-worker',
     )
   })
 })
