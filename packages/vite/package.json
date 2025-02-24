@@ -88,7 +88,7 @@
     "@oxc-project/runtime": "^0.51.0",
     "lightningcss": "^1.28.2",
     "postcss": "^8.5.1",
-    "rolldown": "https://pkg.pr.new/rolldown@d6a3336"
+    "rolldown": "https://pkg.pr.new/rolldown@3673"
   },
   "optionalDependencies": {
     "fsevents": "~2.3.3"

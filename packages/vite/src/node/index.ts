@@ -22,6 +22,8 @@ export { transformWithEsbuild } from './plugins/esbuild'
 export { transformWithOxc } from './plugins/oxc'
 export { buildErrorMessage } from './server/middlewares/error'
 
+export { moduleFederationPlugin } from 'rolldown/experimental'
+
 export {
   createRunnableDevEnvironment,
   isRunnableDevEnvironment,
