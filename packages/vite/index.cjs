@@ -23,6 +23,7 @@ const asyncFunctions = [
   'preprocessCSS',
   'createBuilder',
   'runnerImport',
+  'moduleFederationPlugin', // The rolldown internal using instanceof to detect BuiltinPlugin, the rolldown has cjs/esm bundles, make sure to use the same instance
 ]
 asyncFunctions.forEach((name) => {
   module.exports[name] = (...args) =>
