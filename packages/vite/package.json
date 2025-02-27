@@ -88,7 +88,7 @@
     "@oxc-project/runtime": "^0.51.0",
     "lightningcss": "^1.28.2",
     "postcss": "^8.5.1",
-    "rolldown": "https://pkg.pr.new/rolldown@d6a3336"
+    "rolldown": "https://pkg.pr.new/rolldown@3673"
   },
   "optionalDependencies": {
     "fsevents": "~2.3.3"
@@ -97,7 +97,7 @@
     "@ampproject/remapping": "^2.3.0",
     "@babel/parser": "^7.26.7",
     "@jridgewell/trace-mapping": "^0.3.25",
-    "@oxc-project/types": "^0.51.0",
+    "@oxc-project/types": "^0.52.0",
     "@polka/compression": "^1.0.0-next.25",
     "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "^28.0.2",
