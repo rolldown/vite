@@ -11,6 +11,7 @@ export function buildLoadFallbackPlugin(): RolldownPlugin {
     load: {
       filter: {
         id: {
+          include: /\?|#/,
           exclude: [/^data:/],
         },
       },
