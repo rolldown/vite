@@ -21,7 +21,9 @@ test('normal', async () => {
   )
   await untilUpdated(
     () => page.textContent('.asset-url'),
-    isBuild ? '/iife/assets/worker_asset-vite.svg' : '/iife/vite.svg',
+    isBuild
+      ? /\/iife\/assets\/worker_asset-vite-[\w-]{8}\.svg/
+      : '/iife/vite.svg',
   )
 })
 
@@ -90,10 +92,10 @@ describe.runIf(isBuild)('build', () => {
 
     // worker should have all imports resolved and no exports
     expect(workerContent).not.toMatch(`import`)
-    expect(workerContent).not.toMatch(`export`)
+    expect(workerContent).not.toMatch(/\bexport\b/)
     // chunk
-    expect(content).toMatch(`new Worker("/iife/assets`)
-    expect(content).toMatch(`new SharedWorker("/iife/assets`)
+    expect(content).toMatch('new Worker(`/iife/assets')
+    expect(content).toMatch('new SharedWorker(`/iife/assets')
     // inlined
     expect(content).toMatch(`(self.URL||self.webkitURL).createObjectURL`)
     expect(content).toMatch(`self.Blob`)
@@ -189,7 +191,7 @@ test.runIf(isServe)('sourcemap is correct after env is injected', async () => {
   const content = await (await response).text()
   const { mappings } = decodeSourceMapUrl(content)
   expect(mappings).toMatchInlineSnapshot(
-    `";;AAAA,SAAS,OAAO,kBAAkB;AAClC,OAAO,YAAY;AACnB,SAAS,MAAM,WAAW;AAC1B,SAAS,wBAAwB;AACjC,OAAO,aAAa;AACpB,MAAM,UAAU,YAAY;AAE5B,KAAK,YAAY,CAAC,MAAM;AACtB,MAAI,EAAE,SAAS,QAAQ;AACrB,SAAK,YAAY;AAAA,MACf;AAAA,MACA;AAAA,MACA;AAAA,MACA;AAAA,MACA;AAAA,MACA;AAAA,MACA;AAAA,IACF,CAAC;AAAA,EACH;AACA,MAAI,EAAE,SAAS,gBAAgB;AAC7B,SAAK,YAAY;AAAA,MACf,KAAK;AAAA,MACL;AAAA,MACA;AAAA,MACA;AAAA,MACA;AAAA,MACA;AAAA,MACA;AAAA,IACF,CAAC;AAAA,EACH;AACF;AACA,KAAK,YAAY;AAAA,EACf;AAAA,EACA;AAAA,EACA;AAAA,EACA;AAAA,EACA;AAAA,EACA;AAAA,EACA;AAAA,EACA;AACF,CAAC;AAGD,QAAQ,IAAI,cAAc"`,
+    `";;AAAA,SAAS,OAAO,kBAAkB,8BAA8B;AAChE,OAAO,YAAY,6BAA6B;AAChD,SAAS,MAAM,WAAW,2BAA2B;AACrD,SAAS,wBAAwB,uBAAuB;AACxD,OAAO,aAAa,YAAY;AAChC,MAAM,UAAU,OAAO,KAAK;AAE5B,KAAK,YAAY,CAAC,MAAM;AACtB,KAAI,EAAE,SAAS,QAAQ;AACrB,OAAK,YAAY;GACf;GACA;GACA;GACA;GACA;GACA;GACA;EACD,EAAC;CACH;AACD,KAAI,EAAE,SAAS,gBAAgB;AAC7B,OAAK,YAAY;GACf,KAAK;GACL;GACA;GACA;GACA;GACA;GACA;EACD,EAAC;CACH;AACF;AACD,KAAK,YAAY;CACf;CACA;CACA;CACA;CACA;CACA;CACA;CACA;AACD,EAAC;AAGF,QAAQ,IAAI,eAAe"`,
   )
 })
 

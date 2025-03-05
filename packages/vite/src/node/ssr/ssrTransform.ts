@@ -1,6 +1,7 @@
 import path from 'node:path'
 import MagicString from 'magic-string'
-import type { RollupAstNode, SourceMap } from 'rollup'
+import type { RollupAstNode } from 'rollup'
+import type { SourceMap } from 'rolldown'
 import type {
   ExportAllDeclaration,
   ExportDefaultDeclaration,
@@ -17,7 +18,7 @@ import type {
 import { extract_names as extractNames } from 'periscopic'
 import { walk as eswalk } from 'estree-walker'
 import type { RawSourceMap } from '@ampproject/remapping'
-import { parseAstAsync as rollupParseAstAsync } from 'rollup/parseAst'
+import { parseAstAsync as rolldownParseAstAsync } from 'rolldown/parseAst'
 import type { TransformResult } from '../server/transformRequest'
 import {
   combineSourcemaps,
@@ -80,10 +81,9 @@ async function ssrTransformScript(
   originalCode: string,
 ): Promise<TransformResult | null> {
   const s = new MagicString(code)
-
   let ast: any
   try {
-    ast = await rollupParseAstAsync(code)
+    ast = await rolldownParseAstAsync(code)
   } catch (err) {
     // enhance known rollup errors
     // https://github.com/rollup/rollup/blob/42e587e0e37bc0661aa39fe7ad6f1d7fd33f825c/src/utils/bufferToAst.ts#L17-L22
@@ -423,7 +423,7 @@ async function ssrTransformScript(
   if (inMap?.mappings === '') {
     map = inMap
   } else {
-    map = s.generateMap({ hires: 'boundary' })
+    map = s.generateMap({ hires: 'boundary' }) as SourceMap
     map.sources = [path.basename(url)]
     // needs to use originalCode instead of code
     // because code might be already transformed even if map is null

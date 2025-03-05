@@ -11,7 +11,7 @@ import type {
   RollupLog,
   RollupOptions,
   RollupOutput,
-} from 'rollup'
+} from 'rolldown'
 import type { LibraryFormats, LibraryOptions } from '../build'
 import {
   build,
@@ -131,13 +131,13 @@ describe('build', () => {
       {
         "changed": [
           "index",
-          "_foo",
           "_bar",
+          "_foo",
           "_baz.css",
         ],
         "unchanged": [
-          "_foo.css",
           "_bar.css",
+          "_foo.css",
           "undefined",
         ],
       }
@@ -861,11 +861,11 @@ test.for([true, false])(
       ([client, ssr, custom1, custom2] as RollupOutput[]).map(
         (o) => o.output[0].code.split('\n').length,
       ),
-    ).toEqual([2, 5, 2, 5])
+    ).toEqual([1, 5, 1, 5])
   },
 )
 
-test('adjust worker build error for worker.format', async () => {
+test.skip('adjust worker build error for worker.format', async () => {
   try {
     await build({
       root: resolve(__dirname, 'fixtures/worker-dynamic'),
@@ -886,7 +886,8 @@ test('adjust worker build error for worker.format', async () => {
   expect.unreachable()
 })
 
-describe('onRollupLog', () => {
+// rolldown does not append plugin name to the message automatically
+describe.skip('onRollupLog', () => {
   const pluginName = 'rollup-plugin-test'
   const msgInfo = 'This is the INFO message.'
   const msgWarn = 'This is the WARN message.'

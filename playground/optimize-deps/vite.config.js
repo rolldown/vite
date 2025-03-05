@@ -25,18 +25,14 @@ export default defineConfig({
       '@vitejs/test-dep-optimize-with-glob/**/*.js',
     ],
     exclude: ['@vitejs/test-nested-exclude', '@vitejs/test-dep-non-optimized'],
-    esbuildOptions: {
+    rollupOptions: {
       plugins: [
         {
           name: 'replace-a-file',
-          setup(build) {
-            build.onLoad(
-              { filter: /dep-esbuild-plugin-transform(\\|\/)index\.js$/ },
-              () => ({
-                contents: `export const hello = () => 'Hello from an esbuild plugin'`,
-                loader: 'js',
-              }),
-            )
+          load(id) {
+            if (/dep-esbuild-plugin-transform(?:\\|\/)index\.js$/.test(id)) {
+              return `export const hello = () => 'Hello from an esbuild plugin'`
+            }
           },
         },
       ],
@@ -47,13 +43,6 @@ export default defineConfig({
   build: {
     // to make tests faster
     minify: false,
-    rollupOptions: {
-      onwarn(msg, warn) {
-        // filter `"Buffer" is not exported by "__vite-browser-external"` warning
-        if (msg.message.includes('Buffer')) return
-        warn(msg)
-      },
-    },
   },
 
   plugins: [
@@ -81,19 +70,6 @@ export default defineConfig({
         if (id.endsWith('.astro')) {
           code = `export default {}`
           return { code }
-        }
-      },
-    },
-    // TODO: Remove this one support for prebundling in build lands.
-    // It is expected that named importing in build doesn't work
-    // as it incurs a lot of overhead in build.
-    {
-      name: 'polyfill-named-fs-build',
-      apply: 'build',
-      enforce: 'pre',
-      load(id) {
-        if (id === '__vite-browser-external') {
-          return `export default {}; export function readFileSync() {}`
         }
       },
     },
@@ -136,18 +112,18 @@ function notjs() {
       return {
         optimizeDeps: {
           extensions: ['.notjs'],
-          esbuildOptions: {
+          rollupOptions: {
             plugins: [
               {
                 name: 'esbuild-notjs',
-                setup(build) {
-                  build.onLoad({ filter: /\.notjs$/ }, ({ path }) => {
-                    let contents = fs.readFileSync(path, 'utf-8')
+                load(id) {
+                  if (id.endsWith('.notjs')) {
+                    let contents = fs.readFileSync(id, 'utf-8')
                     contents = contents
                       .replace('<notjs>', '')
                       .replace('</notjs>', '')
-                    return { contents, loader: 'js' }
-                  })
+                    return contents
+                  }
                 },
               },
             ],

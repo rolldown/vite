@@ -506,9 +506,10 @@ test.runIf(isBuild)('Scoped CSS via cssScopeTo should be treeshaken', () => {
   expect(css).not.toContain('treeshake-module-c')
 })
 
-test.runIf(isBuild)(
-  'Scoped CSS via cssScopeTo should be bundled separately',
-  () => {
+// TODO: rolldown does not split sideeffect free barrel files https://github.com/rolldown/rolldown/issues/3746
+test
+  .runIf(isBuild)
+  .skip('Scoped CSS via cssScopeTo should be bundled separately', () => {
     const scopedIndexCss = findAssetFile(/treeshakeScoped-[-\w]{8}\.css$/)
     expect(scopedIndexCss).toContain('treeshake-scoped-barrel-a')
     expect(scopedIndexCss).not.toContain('treeshake-scoped-barrel-b')
@@ -517,5 +518,4 @@ test.runIf(isBuild)(
     )
     expect(scopedAnotherCss).toContain('treeshake-scoped-barrel-b')
     expect(scopedAnotherCss).not.toContain('treeshake-scoped-barrel-a')
-  },
-)
+  })

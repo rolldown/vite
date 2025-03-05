@@ -32,7 +32,6 @@ SOFTWARE.
 import fs from 'node:fs'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
-import { parseAst as rollupParseAst } from 'rollup/parseAst'
 import type {
   AsyncPluginHooks,
   CustomPluginOptions,
@@ -57,12 +56,14 @@ import type {
   SourceDescription,
   SourceMap,
   TransformResult,
-} from 'rollup'
+} from 'rolldown'
 import type { RawSourceMap } from '@ampproject/remapping'
 import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
 import MagicString from 'magic-string'
 import type { FSWatcher } from 'dep-types/chokidar'
 import colors from 'picocolors'
+import { parseAst as rolldownParseAst } from 'rolldown/parseAst'
+import type { Program } from '@oxc-project/types'
 import type { Plugin } from '../plugin'
 import {
   combineSourcemaps,
@@ -74,6 +75,7 @@ import {
   normalizePath,
   numberToPos,
   prettifyUrl,
+  rolldownVersion,
   rollupVersion,
   timeFrom,
 } from '../utils'
@@ -189,7 +191,7 @@ class EnvironmentPluginContainer {
   ) {
     this._started = !autoStart
     this.minimalContext = new MinimalPluginContext(
-      { rollupVersion, watchMode: true },
+      { rollupVersion, rolldownVersion, watchMode: true },
       environment,
     )
     const utils = createPluginHookUtils(plugins)
@@ -349,6 +351,7 @@ class EnvironmentPluginContainer {
        */
       scan?: boolean
       isEntry?: boolean
+      kind?: 'import' | 'dynamic-import' | 'require-call'
     },
   ): Promise<PartialResolvedId | null> {
     if (!this._started) {
@@ -359,6 +362,7 @@ class EnvironmentPluginContainer {
     const skipCalls = options?.skipCalls
     const scan = !!options?.scan
     const ssr = this.environment.config.consumer === 'server'
+    const kind = options?.kind
     const ctx = new ResolveIdContext(this, skip, skipCalls, scan)
 
     const mergedSkip = new Set<Plugin>(skip)
@@ -387,6 +391,7 @@ class EnvironmentPluginContainer {
           isEntry: !!options?.isEntry,
           ssr,
           scan,
+          kind,
         }),
       )
       if (!result) continue
@@ -461,7 +466,9 @@ class EnvironmentPluginContainer {
     },
   ): Promise<{ code: string; map: SourceMap | { mappings: '' } | null }> {
     const ssr = this.environment.config.consumer === 'server'
-    const optionsWithSSR = options ? { ...options, ssr } : { ssr }
+    const optionsWithSSR = options
+      ? { ...options, ssr, moduleType: 'js' }
+      : { ssr, moduleType: 'js' }
     const inMap = options?.inMap
 
     const ctx = new TransformPluginContext(this, id, code, inMap as SourceMap)
@@ -549,6 +556,12 @@ class MinimalPluginContext implements RollupMinimalPluginContext {
     public environment: Environment,
   ) {}
 
+  // FIXME: properly support this later
+  // eslint-disable-next-line @typescript-eslint/class-literal-property-style
+  get pluginName() {
+    return ''
+  }
+
   debug(rawLog: string | RollupLog | (() => string | RollupLog)): void {
     const log = this._normalizeRawLog(rawLog)
     const msg = buildErrorMessage(log, [`debug: ${log.message}`], false)
@@ -586,7 +599,7 @@ class MinimalPluginContext implements RollupMinimalPluginContext {
 
 class PluginContext
   extends MinimalPluginContext
-  implements Omit<RollupPluginContext, 'cache'>
+  implements Omit<RollupPluginContext, 'cache' | 'emitChunk'>
 {
   ssr = false
   _scan = false
@@ -595,6 +608,10 @@ class PluginContext
   _resolveSkips?: Set<Plugin>
   _resolveSkipCalls?: readonly SkipInformation[]
 
+  override get pluginName() {
+    return this._plugin.name
+  }
+
   constructor(
     public _plugin: Plugin,
     public _container: EnvironmentPluginContainer,
@@ -602,8 +619,8 @@ class PluginContext
     super(_container.minimalContext.meta, _container.environment)
   }
 
-  parse(code: string, opts: any) {
-    return rollupParseAst(code, opts)
+  parse(code: string, opts: any): Program {
+    return rolldownParseAst(code, opts)
   }
 
   async resolve(
@@ -899,7 +916,7 @@ class LoadPluginContext extends PluginContext {
 
 class TransformPluginContext
   extends LoadPluginContext
-  implements Omit<RollupTransformPluginContext, 'cache'>
+  implements Omit<RollupTransformPluginContext, 'cache' | 'emitChunk'>
 {
   filename: string
   originalCode: string
@@ -997,7 +1014,7 @@ class TransformPluginContext
         includeContent: true,
         hires: 'boundary',
         source: cleanUrl(this.filename),
-      })
+      }) as SourceMap
     }
     return map
   }
@@ -1017,7 +1034,12 @@ export type {
 
 // Backward compatibility
 class PluginContainer {
-  constructor(private environments: Record<string, Environment>) {}
+  // TODO: revert this workaround later when https://github.com/oxc-project/oxc/issues/8917 is fixed
+  private environments: Record<string, Environment>
+
+  constructor(environments: Record<string, Environment>) {
+    this.environments = environments
+  }
 
   // Backward compatibility
   // Users should call pluginContainer.resolveId (and load/transform) passing the environment they want to work with
